@@ -1,0 +1,176 @@
+@page "/dashboard"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using BlazorWebApp.Data
+@inject AuthenticationService AuthService
+@inject NavigationManager Navigation
+@inject ApplicationDbContext DbContext
+
+<PageTitle>Admin Dashboard</PageTitle>
+
+@if (AuthService.IsAuthenticated())
+{
+    <div class="dashboard-container">
+        <div class="dashboard-header">
+            <h1>Admin Dashboard</h1>
+            <div class="user-info">
+                <span class="username">Welcome, @AuthService.GetUsername()!</span>
+                <button class="btn btn-logout" @onclick="HandleLogout">Logout</button>
+            </div>
+        </div>
+
+        <div class="dashboard-content">
+            <div class="row">
+                <div class="col-md-3">
+                    <a href="/customers" style="text-decoration: none;">
+                        <div class="stat-card">
+                            <div class="stat-icon">👥</div>
+                            <div class="stat-content">
+                                <h3>Total Customers</h3>
+                                <p class="stat-value">@customerCount</p>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-icon">📊</div>
+                        <div class="stat-content">
+                            <h3>Total Users</h3>
+                            <p class="stat-value">1,234</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-icon">✅</div>
+                        <div class="stat-content">
+                            <h3>Active Sessions</h3>
+                            <p class="stat-value">567</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-icon">📈</div>
+                        <div class="stat-content">
+                            <h3>Revenue</h3>
+                            <p class="stat-value">$45,231</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-icon">⚠️</div>
+                        <div class="stat-content">
+                            <h3>Alerts</h3>
+                            <p class="stat-value">12</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mt-5">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Recent Activity</h3>
+                        </div>
+                        <div class="card-body">
+                            <table class="activity-table">
+                                <thead>
+                                    <tr>
+                                        <th>User</th>
+                                        <th>Action</th>
+                                        <th>Time</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>John Doe</td>
+                                        <td>Login</td>
+                                        <td>2 minutes ago</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Jane Smith</td>
+                                        <td>Profile Updated</td>
+                                        <td>15 minutes ago</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Mike Johnson</td>
+                                        <td>Report Generated</td>
+                                        <td>1 hour ago</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>System Status</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="status-item">
+                                <span class="status-label">Database</span>
+                                <span class="status-badge status-ok">✓ Online</span>
+                            </div>
+                            <div class="status-item">
+                                <span class="status-label">API Server</span>
+                                <span class="status-badge status-ok">✓ Online</span>
+                            </div>
+                            <div class="status-item">
+                                <span class="status-label">Cache Service</span>
+                                <span class="status-badge status-ok">✓ Online</span>
+                            </div>
+                            <div class="status-item">
+                                <span class="status-label">Email Service</span>
+                                <span class="status-badge status-warning">⚠ Degraded</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="alert alert-warning" role="alert">
+        You are not authorized to access this page. Please <a href="/login">login</a> first.
+    </div>
+}
+
+@code {
+    private int customerCount = 0;
+
+    protected override void OnInitialized()
+    {
+        if (!AuthService.IsAuthenticated())
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        try
+        {
+            customerCount = DbContext.Customers.Count();
+        }
+        catch
+        {
+            customerCount = 0;
+        }
+    }
+
+    private async Task HandleLogout()
+    {
+        await AuthService.LogoutAsync();
+        Navigation.NavigateTo("/login", forceLoad: true);
+    }
+}

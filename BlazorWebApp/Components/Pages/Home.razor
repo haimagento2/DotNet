@@ -1,0 +1,54 @@
+﻿@page "/"
+@inject AuthenticationService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Home</PageTitle>
+
+<div class="home-container">
+    <div class="hero-section">
+        <h1>Welcome to Admin Portal</h1>
+        
+        @if (AuthService.IsAuthenticated())
+        {
+            <p class="welcome-message">Hello, @AuthService.GetUsername()! You're logged in.</p>
+            <button class="btn btn-lg btn-primary" @onclick="NavigateToDashboard">
+                Go to Dashboard
+            </button>
+        }
+        else
+        {
+            <p class="welcome-message">Secure admin dashboard with authentication</p>
+            <button class="btn btn-lg btn-primary" @onclick="NavigateToLogin">
+                Login to Continue
+            </button>
+        }
+    </div>
+
+    <div class="features-section">
+        <div class="feature-card">
+            <h3>🔒 Secure</h3>
+            <p>Authentication and authorization built-in</p>
+        </div>
+        <div class="feature-card">
+            <h3>⚡ Fast</h3>
+            <p>Blazor server-side rendering performance</p>
+        </div>
+        <div class="feature-card">
+            <h3>📊 Analytics</h3>
+            <p>Complete dashboard with system statistics</p>
+        </div>
+    </div>
+</div>
+
+@code {
+    private void NavigateToLogin()
+    {
+        Navigation.NavigateTo("/login");
+    }
+
+    private void NavigateToDashboard()
+    {
+        Navigation.NavigateTo("/dashboard");
+    }
+}
+

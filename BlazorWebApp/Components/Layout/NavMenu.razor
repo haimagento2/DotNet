@@ -1,0 +1,84 @@
+﻿<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">BlazorWebApp</a>
+        <div class="ms-auto">
+            @if (AuthService.IsAuthenticated())
+            {
+                <span class="navbar-text me-3">@AuthService.GetUsername()</span>
+                <button class="btn btn-sm btn-outline-light" @onclick="HandleLogout">Logout</button>
+            }
+            else
+            {
+                <a href="/login" class="btn btn-sm btn-outline-light">Login</a>
+            }
+        </div>
+    </div>
+</div>
+
+<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+
+<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+    <nav class="nav flex-column">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
+            </NavLink>
+        </div>
+
+        @if (AuthService.IsAuthenticated())
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="dashboard">
+                    <span class="bi bi-speedometer2" aria-hidden="true"></span> Dashboard
+                </NavLink>
+            </div>
+
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="customers">
+                    <span class="bi bi-people-fill" aria-hidden="true"></span> Customers
+                </NavLink>
+            </div>
+
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="admins">
+                    <span class="bi bi-shield-lock-fill" aria-hidden="true"></span> Admins
+                </NavLink>
+            </div>
+
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="companies">
+                    <span class="bi bi-building" aria-hidden="true"></span> Companies
+                </NavLink>
+            </div>
+
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="customer-groups">
+                    <span class="bi bi-collection-fill" aria-hidden="true"></span> Customer Groups
+                </NavLink>
+            </div>
+        }
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="counter">
+                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="weather">
+                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
+            </NavLink>
+        </div>
+    </nav>
+</div>
+
+@code {
+    @inject AuthenticationService AuthService
+    @inject NavigationManager Navigation
+
+    private async Task HandleLogout()
+    {
+        await AuthService.LogoutAsync();
+        Navigation.NavigateTo("/login", forceLoad: true);
+    }
+}
