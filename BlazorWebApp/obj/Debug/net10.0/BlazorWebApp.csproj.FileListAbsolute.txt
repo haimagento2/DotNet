@@ -74,8 +74,6 @@
 /home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/obj/Debug/net10.0/compressed/a6smwdhipf-{0}-cyz5k529gx-cyz5k529gx.gz
 /home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/obj/Debug/net10.0/compressed/ya8w7lupvm-{0}-hwaxidwiwj-hwaxidwiwj.gz
 /home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/obj/Debug/net10.0/compressed/cknulmdj90-{0}-xbbil6v7co-xbbil6v7co.gz
-/home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/obj/Debug/net10.0/compressed/jqlgg8nyzc-{0}-h6t97zb92a-h6t97zb92a.gz
-/home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/obj/Debug/net10.0/compressed/vc1qtgcbnt-{0}-h6t97zb92a-h6t97zb92a.gz
 /home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/obj/Debug/net10.0/staticwebassets.build.json
 /home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/obj/Debug/net10.0/staticwebassets.build.json.cache
 /home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/obj/Debug/net10.0/staticwebassets.development.json
@@ -187,3 +185,5 @@
 /home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/obj/Debug/net10.0/BlazorWebApp.csproj.AssemblyReference.cache
 /home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/obj/Debug/net10.0/BlazorWe.942CA37E.Up2Date
 /home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/obj/Debug/net10.0/BlazorWebApp.sourcelink.json
+/home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/obj/Debug/net10.0/compressed/jqlgg8nyzc-{0}-b6qqr8w43b-b6qqr8w43b.gz
+/home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/obj/Debug/net10.0/compressed/vc1qtgcbnt-{0}-b6qqr8w43b-b6qqr8w43b.gz
