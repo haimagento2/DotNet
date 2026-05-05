@@ -5,7 +5,7 @@
             @if (AuthService.IsAuthenticated())
             {
                 <span class="navbar-text me-3">@AuthService.GetUsername()</span>
-                <button class="btn btn-sm btn-outline-light" @onclick="HandleLogout">Logout</button>
+                <a href="/logout" class="btn btn-sm btn-outline-light">Logout</a>
             }
             else
             {
@@ -56,6 +56,24 @@
                     <span class="bi bi-collection-fill" aria-hidden="true"></span> Customer Groups
                 </NavLink>
             </div>
+
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="programs">
+                    <span class="bi bi-grid-fill" aria-hidden="true"></span> Programs
+                </NavLink>
+            </div>
+
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="licenses">
+                    <span class="bi bi-key-fill" aria-hidden="true"></span> Licenses
+                </NavLink>
+            </div>
+
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="license-members">
+                    <span class="bi bi-person-badge-fill" aria-hidden="true"></span> License Members
+                </NavLink>
+            </div>
         }
 
         <div class="nav-item px-3">
@@ -74,11 +92,4 @@
 
 @code {
     @inject AuthenticationService AuthService
-    @inject NavigationManager Navigation
-
-    private async Task HandleLogout()
-    {
-        await AuthService.LogoutAsync();
-        Navigation.NavigateTo("/login", forceLoad: true);
-    }
 }

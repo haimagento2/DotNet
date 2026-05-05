@@ -50,8 +50,20 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9FcnJvci5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
+[/home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/Components/Pages/LicenseMembers.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9MaWNlbnNlTWVtYmVycy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/Components/Pages/Licenses.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9MaWNlbnNlcy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
 [/home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/Components/Pages/NotFound.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9Ob3RGb3VuZC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/Components/Pages/Programs.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9Qcm9ncmFtcy5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
 [/home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/Components/Pages/Weather.razor]

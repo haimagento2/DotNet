@@ -186,3 +186,4 @@
 /home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/bin/Debug/net10.0/runtimes/win-x86/native/e_sqlite3.dll
 /home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/obj/Debug/net10.0/BlazorWebApp.csproj.AssemblyReference.cache
 /home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/obj/Debug/net10.0/BlazorWe.942CA37E.Up2Date
+/home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/obj/Debug/net10.0/BlazorWebApp.sourcelink.json

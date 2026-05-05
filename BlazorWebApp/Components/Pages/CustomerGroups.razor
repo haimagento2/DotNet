@@ -11,17 +11,23 @@
 
 @if (!AuthService.IsAuthenticated())
 {
-    <div class="alert alert-warning" role="alert">
-        You are not authorized to access this page. Please <a href="/login">login</a> first.
-    </div>
+    <div class="alert alert-warning">You are not authorized. Please <a href="/login">login</a> first.</div>
 }
 else
 {
     <div class="page-container">
         <div class="page-header">
             <h1>Customer Groups</h1>
-            <button class="btn-refresh" @onclick="RefreshData">🔄 Refresh</button>
+            <div class="header-actions">
+                <button class="btn btn-success" @onclick="OpenAdd">+ Add Group</button>
+                <button class="btn btn-secondary" @onclick="RefreshData">🔄 Refresh</button>
+            </div>
         </div>
+
+        @if (!string.IsNullOrEmpty(successMessage))
+        {
+            <div class="alert alert-success">@successMessage</div>
+        }
 
         @if (groups == null)
         {
@@ -37,7 +43,7 @@ else
         else
         {
             <div class="cards-grid">
-                @foreach (var group in groups)
+                @foreach (var group in paged)
                 {
                     <div class="group-card">
                         <div class="group-header">
@@ -57,6 +63,7 @@ else
                         </div>
                         <div class="group-footer">
                             <small>Created: @group.CreatedAt.ToString("yyyy-MM-dd")</small>
+                            <button class="btn-edit" @onclick="() => OpenEdit(group)">✏️ Edit</button>
                         </div>
                     </div>
                 }
@@ -69,12 +76,13 @@ else
                             <th>ID</th>
                             <th>Group Name</th>
                             <th>Description</th>
-                            <th>Customer Count</th>
+                            <th>Customers</th>
                             <th>Created</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var group in groups)
+                        @foreach (var group in paged)
                         {
                             <tr>
                                 <td class="id-cell">@group.Id</td>
@@ -82,20 +90,82 @@ else
                                 <td>@group.Description</td>
                                 <td class="count-cell">@group.Customers.Count</td>
                                 <td>@group.CreatedAt.ToString("yyyy-MM-dd")</td>
+                                <td><button class="btn-edit" @onclick="() => OpenEdit(group)">✏️ Edit</button></td>
                             </tr>
                         }
                     </tbody>
                 </table>
             </div>
+            @if (totalPages > 1)
+            {
+                <div class="pagination-bar">
+                    <button class="page-btn" disabled="@(currentPage == 1)" @onclick="() => GoToPage(currentPage - 1)">‹ Prev</button>
+                    @for (int i = 1; i <= totalPages; i++)
+                    {
+                        var p = i;
+                        <button class="page-btn @(p == currentPage ? "active" : "")" @onclick="() => GoToPage(p)">@p</button>
+                    }
+                    <button class="page-btn" disabled="@(currentPage >= totalPages)" @onclick="() => GoToPage(currentPage + 1)">Next ›</button>
+                </div>
+            }
             <div class="stats">
-                <p><strong>Total Groups:</strong> @groups.Count &nbsp;|&nbsp; <strong>Total Customers:</strong> @groups.Sum(g => g.Customers.Count)</p>
+                <p><strong>Showing:</strong> @(((currentPage - 1) * PageSize) + 1)–@(Math.Min(currentPage * PageSize, groups!.Count)) of <strong>@groups.Count</strong> groups &nbsp;|&nbsp; <strong>Total Customers:</strong> @groups.Sum(g => g.Customers.Count)</p>
             </div>
         }
     </div>
+
+    @if (showForm)
+    {
+        <div class="modal-backdrop" @onclick="CloseForm"></div>
+        <div class="modal-panel">
+            <div class="modal-header">
+                <h2>@(isEditing ? "Edit Group" : "Add New Group")</h2>
+                <button class="btn-close" @onclick="CloseForm">✕</button>
+            </div>
+            <div class="modal-body">
+                <EditForm Model="form" OnValidSubmit="Save">
+                    <DataAnnotationsValidator />
+
+                    <div class="form-group">
+                        <label>Group Name *</label>
+                        <InputText class="form-control" @bind-Value="form.Name" placeholder="e.g. VIP, Enterprise…" />
+                        <ValidationMessage For="@(() => form.Name)" />
+                    </div>
+
+                    <div class="form-group">
+                        <label>Description</label>
+                        <InputTextArea class="form-control" rows="3" @bind-Value="form.Description" placeholder="Brief description of this group…" />
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(formError))
+                    {
+                        <div class="alert alert-danger">@formError</div>
+                    }
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CloseForm">Cancel</button>
+                        <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                            @(isSaving ? "Saving…" : (isEditing ? "Save Changes" : "Add Group"))
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    }
 }
 
 @code {
     private List<CustomerGroup>? groups;
+    private bool showForm, isEditing, isSaving;
+    private string? successMessage, formError;
+    private GroupForm form = new();
+    private int editingId;
+
+    private int currentPage = 1;
+    private const int PageSize = 20;
+    private int totalPages => (int)Math.Ceiling((groups?.Count ?? 0) / (double)PageSize);
+    private List<CustomerGroup> paged => groups?.Skip((currentPage - 1) * PageSize).Take(PageSize).ToList() ?? new();
+    private void GoToPage(int page) { currentPage = Math.Clamp(page, 1, Math.Max(1, totalPages)); }
 
     protected override async Task OnInitializedAsync()
     {
@@ -105,94 +175,128 @@ else
 
     private async Task Load()
     {
-        try
-        {
-            groups = DbContext.CustomerGroups
-                .Include(g => g.Customers)
-                .OrderBy(g => g.Id)
-                .ToList();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error: {ex.Message}");
-            groups = new();
-        }
+        groups = DbContext.CustomerGroups.Include(g => g.Customers).OrderBy(g => g.Id).ToList();
+        currentPage = 1;
     }
 
-    private async Task RefreshData() { await Load(); StateHasChanged(); }
+    private async Task RefreshData() { await Load(); successMessage = null; StateHasChanged(); }
+
+    private void OpenAdd()
+    {
+        form = new(); isEditing = false; formError = null; successMessage = null; showForm = true;
+    }
+
+    private void OpenEdit(CustomerGroup g)
+    {
+        editingId = g.Id;
+        form = new GroupForm { Name = g.Name, Description = g.Description };
+        isEditing = true; formError = null; successMessage = null; showForm = true;
+    }
+
+    private void CloseForm() { showForm = false; formError = null; }
+
+    private async Task Save()
+    {
+        isSaving = true; formError = null;
+        try
+        {
+            if (isEditing)
+            {
+                var entity = DbContext.CustomerGroups.Find(editingId);
+                if (entity == null) { formError = "Group not found."; return; }
+                entity.Name = form.Name; entity.Description = form.Description;
+                DbContext.CustomerGroups.Update(entity);
+                successMessage = $"Group '{entity.Name}' updated.";
+            }
+            else
+            {
+                var entity = new CustomerGroup { Name = form.Name, Description = form.Description, CreatedAt = DateTime.Now };
+                DbContext.CustomerGroups.Add(entity);
+                successMessage = $"Group '{entity.Name}' added.";
+            }
+            DbContext.SaveChanges();
+            await Load();
+            showForm = false;
+        }
+        catch (Exception ex) { formError = $"Error: {ex.Message}"; }
+        finally { isSaving = false; }
+    }
+
+    private sealed class GroupForm
+    {
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Group name is required")]
+        public string Name        { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+    }
 }
 
 <style>
     .page-container { padding: 2rem; background: #f5f5f5; min-height: 100vh; }
 
-    .page-header {
-        display: flex; justify-content: space-between; align-items: center;
-        margin-bottom: 2rem; background: white; padding: 1.5rem;
-        border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1);
-    }
+    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1); }
     .page-header h1 { margin: 0; color: #333; font-size: 2rem; }
+    .header-actions { display: flex; gap: .75rem; }
 
-    .btn-refresh {
-        background: #764ba2; color: white; border: none;
-        padding: .75rem 1.5rem; border-radius: 4px; cursor: pointer;
-        font-weight: 500; transition: background .3s;
-    }
-    .btn-refresh:hover { background: #5e3a82; }
+    .btn { border: none; padding: .65rem 1.25rem; border-radius: 4px; cursor: pointer; font-weight: 500; font-size: .9rem; transition: opacity .2s; }
+    .btn:hover { opacity: .85; }
+    .btn-primary   { background: #667eea; color: white; }
+    .btn-success   { background: #28a745; color: white; }
+    .btn-secondary { background: #6c757d; color: white; }
 
-    .cards-grid {
-        display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-        gap: 1.5rem; margin-bottom: 2rem;
-    }
+    .alert { padding: 1rem 1.25rem; border-radius: 6px; margin-bottom: 1.25rem; }
+    .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .alert-info    { background: #d1ecf1; color: #0c5460; }
+    .alert-danger  { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    .alert-warning { background: #fff3cd; color: #856404; }
 
-    .group-card {
-        background: white; border-radius: 10px;
-        box-shadow: 0 2px 8px rgba(0,0,0,.1); padding: 1.5rem;
-        border-top: 4px solid #764ba2;
-    }
+    .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
 
+    .group-card { background: white; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,.1); padding: 1.5rem; border-top: 4px solid #764ba2; }
     .group-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: .75rem; }
-    .group-name { font-size: 1.25rem; font-weight: 700; color: #333; }
-    .group-count {
-        background: #764ba2; color: white;
-        padding: .2rem .7rem; border-radius: 12px; font-size: .8rem; font-weight: 600;
-    }
-
+    .group-name { font-size: 1.2rem; font-weight: 700; color: #333; }
+    .group-count { background: #764ba2; color: white; padding: .2rem .7rem; border-radius: 12px; font-size: .8rem; font-weight: 600; }
     .group-description { color: #666; font-size: .9rem; margin-bottom: 1rem; }
-
     .group-members { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1rem; }
-    .member-chip {
-        background: #f0ebf8; color: #764ba2;
-        padding: .15rem .6rem; border-radius: 10px; font-size: .78rem;
-    }
+    .member-chip { background: #f0ebf8; color: #764ba2; padding: .15rem .6rem; border-radius: 10px; font-size: .78rem; }
     .member-chip.more { background: #e0e0e0; color: #666; }
+    .group-footer { display: flex; justify-content: space-between; align-items: center; color: #999; font-size: .8rem; border-top: 1px solid #f0f0f0; padding-top: .75rem; }
 
-    .group-footer { color: #999; font-size: .8rem; border-top: 1px solid #f0f0f0; padding-top: .75rem; }
-
-    .table-container {
-        background: white; border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,.1); overflow-x: auto; margin-bottom: 2rem;
-    }
-
+    .table-container { background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1); overflow-x: auto; margin-bottom: 1.5rem; }
     .data-table { width: 100%; border-collapse: collapse; font-size: .95rem; }
     .data-table thead { background: linear-gradient(135deg, #764ba2 0%, #667eea 100%); color: white; }
-    .data-table th { padding: 1rem; text-align: left; font-weight: 600; }
-    .data-table td { padding: 1rem; border-bottom: 1px solid #e0e0e0; color: #555; }
+    .data-table th { padding: .9rem 1rem; text-align: left; font-weight: 600; }
+    .data-table td { padding: .9rem 1rem; border-bottom: 1px solid #e0e0e0; color: #555; }
     .data-table tbody tr:hover { background: #f9f9f9; }
 
     .id-cell { font-weight: 600; color: #764ba2; }
     .count-cell { font-weight: 700; color: #764ba2; text-align: center; }
+    .badge-group { background: linear-gradient(135deg, #764ba2, #667eea); color: white; padding: .25rem .75rem; border-radius: 12px; font-size: .85rem; font-weight: 600; }
 
-    .badge-group {
-        background: linear-gradient(135deg, #764ba2, #667eea);
-        color: white; padding: .25rem .75rem; border-radius: 12px; font-size: .85rem; font-weight: 600;
-    }
+    .btn-edit { background: #fff3cd; color: #856404; border: 1px solid #ffc107; padding: .3rem .75rem; border-radius: 4px; cursor: pointer; font-size: .82rem; transition: background .2s; }
+    .btn-edit:hover { background: #ffc107; color: #fff; }
 
-    .loading {
-        display: flex; flex-direction: column; justify-content: center; align-items: center;
-        min-height: 200px; background: white; border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,.1);
-    }
+    .pagination-bar { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: .35rem; padding: 1rem; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1); margin-bottom: 1rem; }
+    .page-btn { border: 1px solid #d0d0d0; background: white; color: #555; padding: .35rem .7rem; border-radius: 4px; cursor: pointer; font-size: .88rem; min-width: 36px; transition: all .15s; }
+    .page-btn:hover:not(:disabled) { background: #764ba2; color: white; border-color: #764ba2; }
+    .page-btn.active { background: #764ba2; color: white; border-color: #764ba2; font-weight: 600; }
+    .page-btn:disabled { opacity: .45; cursor: not-allowed; }
+    .stats { background: white; padding: 1.25rem 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1); }
+    .stats p { margin: 0; color: #555; }
 
-    .stats { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1); }
-    .stats p { margin: .5rem 0; color: #555; }
+    .loading { display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 200px; background: white; border-radius: 8px; }
+
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 1000; }
+    .modal-panel { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 90%; max-width: 500px; max-height: 90vh; overflow-y: auto; background: white; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,.3); z-index: 1001; }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 1.25rem 1.5rem; background: linear-gradient(135deg, #764ba2 0%, #667eea 100%); border-radius: 12px 12px 0 0; color: white; }
+    .modal-header h2 { margin: 0; font-size: 1.25rem; }
+    .btn-close { background: rgba(255,255,255,.2); border: none; color: white; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 1rem; display: flex; align-items: center; justify-content: center; }
+    .btn-close:hover { background: rgba(255,255,255,.35); }
+    .modal-body { padding: 1.5rem; }
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; font-weight: 500; color: #444; margin-bottom: .35rem; font-size: .9rem; }
+    .form-control { width: 100%; padding: .6rem .85rem; border: 1px solid #d0d0d0; border-radius: 5px; font-size: .9rem; box-sizing: border-box; transition: border-color .2s; }
+    .form-control:focus { outline: none; border-color: #764ba2; box-shadow: 0 0 0 3px rgba(118,75,162,.15); }
+    .modal-footer { display: flex; justify-content: flex-end; gap: .75rem; padding-top: 1rem; border-top: 1px solid #eee; margin-top: .5rem; }
+
+    @@media (max-width: 600px) { .page-header { flex-direction: column; gap: 1rem; } }
 </style>

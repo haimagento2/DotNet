@@ -11,8 +11,8 @@
 
 @if (!AuthService.IsAuthenticated())
 {
-    <div class="alert alert-warning" role="alert">
-        You are not authorized to access this page. Please <a href="/login">login</a> first.
+    <div class="alert alert-warning">
+        You are not authorized. Please <a href="/login">login</a> first.
     </div>
 }
 else
@@ -21,18 +21,20 @@ else
         <div class="page-header">
             <h1>Customers</h1>
             <div class="header-actions">
-                <button class="btn btn-primary" @onclick="RefreshData">
-                    🔄 Refresh
-                </button>
+                <button class="btn btn-success" @onclick="OpenAddForm">+ Add Customer</button>
+                <button class="btn btn-secondary" @onclick="RefreshData">🔄 Refresh</button>
             </div>
         </div>
+
+        @if (!string.IsNullOrEmpty(successMessage))
+        {
+            <div class="alert alert-success">@successMessage</div>
+        }
 
         @if (customers == null)
         {
             <div class="loading">
-                <div class="spinner-border" role="status">
-                    <span class="visually-hidden">Loading...</span>
-                </div>
+                <div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div>
                 <p>Loading customers...</p>
             </div>
         }
@@ -55,10 +57,11 @@ else
                             <th>Group</th>
                             <th>City</th>
                             <th>Created</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var customer in customers)
+                        @foreach (var customer in paged)
                         {
                             <tr>
                                 <td class="id-cell">@customer.Id</td>
@@ -70,54 +73,254 @@ else
                                 <td><span class="badge-group">@(customer.CustomerGroup?.Name ?? "-")</span></td>
                                 <td>@customer.City</td>
                                 <td>@customer.CreatedAt.ToString("yyyy-MM-dd")</td>
+                                <td class="actions-cell">
+                                    <button class="btn-edit" @onclick="() => OpenEditForm(customer)">✏️ Edit</button>
+                                </td>
                             </tr>
                         }
                     </tbody>
                 </table>
             </div>
-
+            @if (totalPages > 1)
+            {
+                <div class="pagination-bar">
+                    <button class="page-btn" disabled="@(currentPage == 1)" @onclick="() => GoToPage(currentPage - 1)">‹ Prev</button>
+                    @for (int i = 1; i <= totalPages; i++)
+                    {
+                        var p = i;
+                        <button class="page-btn @(p == currentPage ? "active" : "")" @onclick="() => GoToPage(p)">@p</button>
+                    }
+                    <button class="page-btn" disabled="@(currentPage >= totalPages)" @onclick="() => GoToPage(currentPage + 1)">Next ›</button>
+                </div>
+            }
             <div class="stats">
-                <p><strong>Total Customers:</strong> @customers.Count</p>
+                <p><strong>Showing:</strong> @(((currentPage - 1) * PageSize) + 1)–@(Math.Min(currentPage * PageSize, customers!.Count)) of <strong>@customers.Count</strong> customers</p>
             </div>
         }
     </div>
+
+    @if (showForm)
+    {
+        <div class="modal-backdrop" @onclick="CloseForm"></div>
+        <div class="modal-panel">
+            <div class="modal-header">
+                <h2>@(isEditing ? "Edit Customer" : "Add New Customer")</h2>
+                <button class="btn-close" @onclick="CloseForm">✕</button>
+            </div>
+            <div class="modal-body">
+                <EditForm Model="formModel" OnValidSubmit="SaveCustomer">
+                    <DataAnnotationsValidator />
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>First Name *</label>
+                            <InputText class="form-control" @bind-Value="formModel.FirstName" placeholder="First name" />
+                            <ValidationMessage For="@(() => formModel.FirstName)" />
+                        </div>
+                        <div class="form-group">
+                            <label>Last Name *</label>
+                            <InputText class="form-control" @bind-Value="formModel.LastName" placeholder="Last name" />
+                            <ValidationMessage For="@(() => formModel.LastName)" />
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Email *</label>
+                        <InputText class="form-control" @bind-Value="formModel.Email" placeholder="email@example.com" />
+                        <ValidationMessage For="@(() => formModel.Email)" />
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Phone</label>
+                            <InputText class="form-control" @bind-Value="formModel.Phone" placeholder="+1-555-0000" />
+                        </div>
+                        <div class="form-group">
+                            <label>City</label>
+                            <InputText class="form-control" @bind-Value="formModel.City" placeholder="City" />
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Company</label>
+                            <InputSelect class="form-control" @bind-Value="formModel.CompanyId">
+                                <option value="">— None —</option>
+                                @foreach (var c in companies)
+                                {
+                                    <option value="@c.Id">@c.Name</option>
+                                }
+                            </InputSelect>
+                        </div>
+                        <div class="form-group">
+                            <label>Customer Group</label>
+                            <InputSelect class="form-control" @bind-Value="formModel.CustomerGroupId">
+                                <option value="">— None —</option>
+                                @foreach (var g in groups)
+                                {
+                                    <option value="@g.Id">@g.Name</option>
+                                }
+                            </InputSelect>
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(formError))
+                    {
+                        <div class="alert alert-danger">@formError</div>
+                    }
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CloseForm">Cancel</button>
+                        <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                            @(isSaving ? "Saving…" : (isEditing ? "Save Changes" : "Add Customer"))
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    }
 }
 
 @code {
     private List<Customer>? customers;
+    private List<Company> companies = new();
+    private List<CustomerGroup> groups = new();
+
+    private bool showForm;
+    private bool isEditing;
+    private bool isSaving;
+    private string? successMessage;
+    private string? formError;
+    private CustomerFormModel formModel = new();
+    private int editingId;
+
+    private int currentPage = 1;
+    private const int PageSize = 20;
+    private int totalPages => (int)Math.Ceiling((customers?.Count ?? 0) / (double)PageSize);
+    private List<Customer> paged => customers?.Skip((currentPage - 1) * PageSize).Take(PageSize).ToList() ?? new();
+    private void GoToPage(int page) { currentPage = Math.Clamp(page, 1, Math.Max(1, totalPages)); }
 
     protected override async Task OnInitializedAsync()
     {
-        if (!AuthService.IsAuthenticated())
-        {
-            Navigation.NavigateTo("/login");
-            return;
-        }
-
-        await LoadCustomers();
+        if (!AuthService.IsAuthenticated()) { Navigation.NavigateTo("/login"); return; }
+        await LoadAll();
     }
 
-    private async Task LoadCustomers()
+    private async Task LoadAll()
     {
+        customers = DbContext.Customers
+            .Include(c => c.Company)
+            .Include(c => c.CustomerGroup)
+            .OrderBy(c => c.Id)
+            .ToList();
+
+        companies = DbContext.Companies.OrderBy(c => c.Name).ToList();
+        groups    = DbContext.CustomerGroups.OrderBy(g => g.Name).ToList();
+        currentPage = 1;
+    }
+
+    private async Task RefreshData() { await LoadAll(); successMessage = null; StateHasChanged(); }
+
+    private void OpenAddForm()
+    {
+        formModel    = new();
+        isEditing    = false;
+        formError    = null;
+        successMessage = null;
+        showForm     = true;
+    }
+
+    private void OpenEditForm(Customer c)
+    {
+        editingId = c.Id;
+        formModel = new CustomerFormModel
+        {
+            FirstName       = c.FirstName,
+            LastName        = c.LastName,
+            Email           = c.Email,
+            Phone           = c.Phone,
+            City            = c.City,
+            CompanyId       = c.CompanyId,
+            CustomerGroupId = c.CustomerGroupId
+        };
+        isEditing      = true;
+        formError      = null;
+        successMessage = null;
+        showForm       = true;
+    }
+
+    private void CloseForm() { showForm = false; formError = null; }
+
+    private async Task SaveCustomer()
+    {
+        isSaving  = true;
+        formError = null;
+
         try
         {
-            customers = DbContext.Customers
-                .Include(c => c.Company)
-                .Include(c => c.CustomerGroup)
-                .OrderBy(c => c.Id)
-                .ToList();
+            if (isEditing)
+            {
+                var existing = DbContext.Customers.Find(editingId);
+                if (existing == null) { formError = "Customer not found."; return; }
+
+                existing.FirstName       = formModel.FirstName;
+                existing.LastName        = formModel.LastName;
+                existing.Email           = formModel.Email;
+                existing.Phone           = formModel.Phone;
+                existing.City            = formModel.City;
+                existing.CompanyId       = formModel.CompanyId;
+                existing.CustomerGroupId = formModel.CustomerGroupId;
+
+                DbContext.Customers.Update(existing);
+                successMessage = $"Customer '{existing.FirstName} {existing.LastName}' updated successfully.";
+            }
+            else
+            {
+                var customer = new Customer
+                {
+                    FirstName       = formModel.FirstName,
+                    LastName        = formModel.LastName,
+                    Email           = formModel.Email,
+                    Phone           = formModel.Phone,
+                    City            = formModel.City,
+                    CompanyId       = formModel.CompanyId,
+                    CustomerGroupId = formModel.CustomerGroupId,
+                    CreatedAt       = DateTime.Now
+                };
+                DbContext.Customers.Add(customer);
+                successMessage = $"Customer '{customer.FirstName} {customer.LastName}' added successfully.";
+            }
+
+            DbContext.SaveChanges();
+            await LoadAll();
+            showForm = false;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error loading customers: {ex.Message}");
-            customers = new List<Customer>();
+            formError = $"Error saving customer: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
         }
     }
 
-    private async Task RefreshData()
+    private sealed class CustomerFormModel
     {
-        await LoadCustomers();
-        StateHasChanged();
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "First name is required")]
+        public string FirstName { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Last name is required")]
+        public string LastName { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Email is required")]
+        [System.ComponentModel.DataAnnotations.EmailAddress(ErrorMessage = "Invalid email address")]
+        public string Email { get; set; } = string.Empty;
+
+        public string Phone { get; set; } = string.Empty;
+        public string City  { get; set; } = string.Empty;
+        public int? CompanyId       { get; set; }
+        public int? CustomerGroupId { get; set; }
     }
 }
 
@@ -132,143 +335,128 @@ else
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 2rem;
+        margin-bottom: 1.5rem;
         background: white;
         padding: 1.5rem;
         border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 2px 4px rgba(0,0,0,.1);
     }
 
-    .page-header h1 {
-        margin: 0;
-        color: #333;
-        font-size: 2rem;
-    }
+    .page-header h1 { margin: 0; color: #333; font-size: 2rem; }
 
-    .header-actions {
-        display: flex;
-        gap: 1rem;
-    }
+    .header-actions { display: flex; gap: .75rem; }
 
-    .btn-primary {
-        background-color: #667eea;
-        color: white;
-        border: none;
-        padding: 0.75rem 1.5rem;
-        border-radius: 4px;
-        cursor: pointer;
-        font-weight: 500;
-        transition: background-color 0.3s;
+    .btn {
+        border: none; padding: .65rem 1.25rem; border-radius: 4px;
+        cursor: pointer; font-weight: 500; font-size: .9rem; transition: opacity .2s;
     }
+    .btn:hover { opacity: .85; }
+    .btn-primary   { background: #667eea; color: white; }
+    .btn-success   { background: #28a745; color: white; }
+    .btn-secondary { background: #6c757d; color: white; }
 
-    .btn-primary:hover {
-        background-color: #5568d3;
-    }
+    .alert { padding: 1rem 1.25rem; border-radius: 6px; margin-bottom: 1.25rem; }
+    .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .alert-info    { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+    .alert-danger  { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    .alert-warning { background: #fff3cd; color: #856404; border: 1px solid #ffc107; }
 
     .table-container {
-        background: white;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        overflow-x: auto;
-        margin-bottom: 2rem;
+        background: white; border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,.1); overflow-x: auto; margin-bottom: 1.5rem;
     }
 
-    .customers-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 0.95rem;
-    }
+    .customers-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+    .customers-table thead { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+    .customers-table th { padding: .85rem 1rem; text-align: left; font-weight: 600; white-space: nowrap; }
+    .customers-table td { padding: .85rem 1rem; border-bottom: 1px solid #e0e0e0; color: #555; }
+    .customers-table tbody tr:hover { background: #f9f9f9; }
+    .customers-table a { color: #667eea; text-decoration: none; }
+    .customers-table a:hover { text-decoration: underline; }
 
-    .customers-table thead {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-    }
-
-    .customers-table th {
-        padding: 1rem;
-        text-align: left;
-        font-weight: 600;
-    }
-
-    .customers-table td {
-        padding: 1rem;
-        border-bottom: 1px solid #e0e0e0;
-        color: #555;
-    }
-
-    .customers-table tbody tr:hover {
-        background-color: #f9f9f9;
-        transition: background-color 0.2s;
-    }
-
-    .customers-table a {
-        color: #667eea;
-        text-decoration: none;
-    }
-
-    .customers-table a:hover {
-        text-decoration: underline;
-    }
-
-    .id-cell {
-        font-weight: 600;
-        color: #667eea;
-    }
+    .id-cell { font-weight: 600; color: #667eea; }
+    .actions-cell { white-space: nowrap; }
 
     .badge-group {
         background: linear-gradient(135deg, #667eea, #764ba2);
-        color: white;
-        padding: 0.2rem 0.6rem;
-        border-radius: 12px;
-        font-size: 0.8rem;
-        font-weight: 500;
+        color: white; padding: .2rem .6rem; border-radius: 12px;
+        font-size: .78rem; font-weight: 500;
     }
+
+    .btn-edit {
+        background: #fff3cd; color: #856404; border: 1px solid #ffc107;
+        padding: .3rem .75rem; border-radius: 4px; cursor: pointer; font-size: .82rem;
+        transition: background .2s;
+    }
+    .btn-edit:hover { background: #ffc107; color: #fff; }
+
+    .pagination-bar { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: .35rem; padding: 1rem; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1); margin-bottom: 1rem; }
+    .page-btn { border: 1px solid #d0d0d0; background: white; color: #555; padding: .35rem .7rem; border-radius: 4px; cursor: pointer; font-size: .88rem; min-width: 36px; transition: all .15s; }
+    .page-btn:hover:not(:disabled) { background: #667eea; color: white; border-color: #667eea; }
+    .page-btn.active { background: #667eea; color: white; border-color: #667eea; font-weight: 600; }
+    .page-btn:disabled { opacity: .45; cursor: not-allowed; }
+    .stats { background: white; padding: 1.25rem 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1); }
+    .stats p { margin: 0; color: #555; }
 
     .loading {
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        min-height: 200px;
-        background: white;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        display: flex; flex-direction: column; justify-content: center; align-items: center;
+        min-height: 200px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1);
+    }
+    .spinner-border { color: #667eea; }
+
+    /* Modal */
+    .modal-backdrop {
+        position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 1000;
     }
 
-    .spinner-border {
-        color: #667eea;
+    .modal-panel {
+        position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto;
+        background: white; border-radius: 12px;
+        box-shadow: 0 20px 60px rgba(0,0,0,.3); z-index: 1001;
     }
 
-    .stats {
-        background: white;
-        padding: 1.5rem;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    .modal-header {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 1.25rem 1.5rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 12px 12px 0 0; color: white;
+    }
+    .modal-header h2 { margin: 0; font-size: 1.25rem; }
+
+    .btn-close {
+        background: rgba(255,255,255,.2); border: none; color: white;
+        width: 32px; height: 32px; border-radius: 50%; cursor: pointer;
+        font-size: 1rem; display: flex; align-items: center; justify-content: center;
+        transition: background .2s;
+    }
+    .btn-close:hover { background: rgba(255,255,255,.35); }
+
+    .modal-body { padding: 1.5rem; }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; font-weight: 500; color: #444; margin-bottom: .35rem; font-size: .9rem; }
+    .form-control {
+        width: 100%; padding: .6rem .85rem; border: 1px solid #d0d0d0;
+        border-radius: 5px; font-size: .9rem; box-sizing: border-box;
+        transition: border-color .2s, box-shadow .2s;
+    }
+    .form-control:focus {
+        outline: none; border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102,126,234,.15);
     }
 
-    .stats p {
-        margin: 0.5rem 0;
-        color: #555;
+    .modal-footer {
+        display: flex; justify-content: flex-end; gap: .75rem;
+        padding-top: 1rem; border-top: 1px solid #eee; margin-top: .5rem;
     }
 
-    @@media (max-width: 768px) {
-        .page-header {
-            flex-direction: column;
-            gap: 1rem;
-            text-align: center;
-        }
-
-        .page-header h1 {
-            font-size: 1.5rem;
-        }
-
-        .customers-table {
-            font-size: 0.85rem;
-        }
-
-        .customers-table th,
-        .customers-table td {
-            padding: 0.75rem;
-        }
+    @@media (max-width: 600px) {
+        .form-row { grid-template-columns: 1fr; }
+        .page-header { flex-direction: column; gap: 1rem; }
+        .customers-table { font-size: .8rem; }
+        .customers-table th, .customers-table td { padding: .65rem; }
     }
 </style>

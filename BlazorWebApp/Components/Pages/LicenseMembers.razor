@@ -1,0 +1,294 @@
+@page "/license-members"
+@rendermode InteractiveServer
+@using BlazorWebApp.Data
+@using BlazorWebApp.Models
+@using Microsoft.EntityFrameworkCore
+@inject AuthenticationService AuthService
+@inject NavigationManager Navigation
+@inject ApplicationDbContext DbContext
+
+<PageTitle>License Members</PageTitle>
+
+@if (!AuthService.IsAuthenticated())
+{
+    <div class="alert alert-warning">You are not authorized. Please <a href="/login">login</a> first.</div>
+}
+else
+{
+    <div class="page-container">
+        <div class="page-header">
+            <h1>License Members</h1>
+            <div class="header-actions">
+                <button class="btn btn-success" @onclick="OpenAdd">+ Assign Member</button>
+                <button class="btn btn-secondary" @onclick="RefreshData">🔄 Refresh</button>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(successMessage))
+        {
+            <div class="alert alert-success">@successMessage</div>
+        }
+
+        <!-- Filter bar -->
+        <div class="filter-bar">
+            <div class="filter-group">
+                <label>Filter by License</label>
+                <select class="form-control" @onchange="FilterChanged">
+                    <option value="0">All Licenses</option>
+                    @foreach (var lic in allLicenses)
+                    {
+                        <option value="@lic.Id">@lic.LicenseKey (@(lic.Program?.Name ?? "-"))</option>
+                    }
+                </select>
+            </div>
+        </div>
+
+        @if (members == null)
+        {
+            <div class="loading"><div class="spinner-border" role="status"></div><p>Loading…</p></div>
+        }
+        else if (filtered.Count == 0)
+        {
+            <div class="alert alert-info">No members found.</div>
+        }
+        else
+        {
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr><th>ID</th><th>License Key</th><th>Program</th><th>Customer</th><th>Company</th><th>Assigned</th><th>Actions</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var m in filtered)
+                        {
+                            <tr>
+                                <td class="id-cell">@m.Id</td>
+                                <td class="key-cell">@(m.License?.LicenseKey ?? "-")</td>
+                                <td><span class="badge-program">@(m.License?.Program?.Name ?? "-")</span></td>
+                                <td class="name-cell">@(m.Customer?.FirstName) @(m.Customer?.LastName)</td>
+                                <td>@(m.Customer?.Company?.Name ?? "-")</td>
+                                <td>@m.AssignedAt.ToString("yyyy-MM-dd")</td>
+                                <td>
+                                    <button class="btn-edit" @onclick="() => OpenEdit(m)">✏️ Edit</button>
+                                    <button class="btn-delete" @onclick="() => Remove(m)">🗑 Remove</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <div class="stats"><p><strong>Showing:</strong> @filtered.Count of @members.Count total assignments</p></div>
+        }
+    </div>
+
+    @if (showForm)
+    {
+        <div class="modal-backdrop" @onclick="CloseForm"></div>
+        <div class="modal-panel">
+            <div class="modal-header">
+                <h2>@(isEditing ? "Edit Assignment" : "Assign Member to License")</h2>
+                <button class="btn-close" @onclick="CloseForm">✕</button>
+            </div>
+            <div class="modal-body">
+                <EditForm Model="form" OnValidSubmit="Save">
+                    <DataAnnotationsValidator />
+
+                    <div class="form-group">
+                        <label>License *</label>
+                        <InputSelect class="form-control" @bind-Value="form.LicenseId">
+                            <option value="0">— Select License —</option>
+                            @foreach (var lic in allLicenses)
+                            {
+                                <option value="@lic.Id">@lic.LicenseKey — @(lic.Program?.Name) (@(lic.Company?.Name ?? "No company"))</option>
+                            }
+                        </InputSelect>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Customer *</label>
+                        <InputSelect class="form-control" @bind-Value="form.CustomerId">
+                            <option value="0">— Select Customer —</option>
+                            @foreach (var c in allCustomers)
+                            {
+                                <option value="@c.Id">@c.FirstName @c.LastName (@(c.Company?.Name ?? "No company"))</option>
+                            }
+                        </InputSelect>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Assigned Date</label>
+                        <InputDate class="form-control" @bind-Value="form.AssignedAt" />
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(formError))
+                    {
+                        <div class="alert alert-danger">@formError</div>
+                    }
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CloseForm">Cancel</button>
+                        <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                            @(isSaving ? "Saving…" : (isEditing ? "Save Changes" : "Assign"))
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    private List<LicenseMember>? members;
+    private List<License>        allLicenses  = new();
+    private List<Customer>       allCustomers = new();
+    private int filterLicenseId;
+    private List<LicenseMember> filtered => filterLicenseId == 0
+        ? (members ?? new())
+        : (members ?? new()).Where(m => m.LicenseId == filterLicenseId).ToList();
+
+    private bool showForm, isEditing, isSaving;
+    private string? successMessage, formError;
+    private MemberForm form = new();
+    private int editingId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!AuthService.IsAuthenticated()) { Navigation.NavigateTo("/login"); return; }
+        await Load();
+    }
+
+    private async Task Load()
+    {
+        members = DbContext.LicenseMembers
+            .Include(m => m.License).ThenInclude(l => l!.Program)
+            .Include(m => m.License).ThenInclude(l => l!.Company)
+            .Include(m => m.Customer).ThenInclude(c => c!.Company)
+            .OrderBy(m => m.LicenseId).ThenBy(m => m.Id)
+            .ToList();
+
+        allLicenses  = DbContext.Licenses.Include(l => l.Program).Include(l => l.Company).OrderBy(l => l.LicenseKey).ToList();
+        allCustomers = DbContext.Customers.Include(c => c.Company).OrderBy(c => c.FirstName).ToList();
+    }
+
+    private async Task RefreshData() { await Load(); successMessage = null; StateHasChanged(); }
+
+    private void FilterChanged(ChangeEventArgs e)
+    {
+        filterLicenseId = int.TryParse(e.Value?.ToString(), out var id) ? id : 0;
+        StateHasChanged();
+    }
+
+    private void OpenAdd()
+    {
+        form = new MemberForm { AssignedAt = DateTime.Today };
+        isEditing = false; formError = null; successMessage = null; showForm = true;
+    }
+
+    private void OpenEdit(LicenseMember m)
+    {
+        editingId = m.Id;
+        form = new MemberForm { LicenseId = m.LicenseId, CustomerId = m.CustomerId, AssignedAt = m.AssignedAt };
+        isEditing = true; formError = null; successMessage = null; showForm = true;
+    }
+
+    private void CloseForm() { showForm = false; formError = null; }
+
+    private async Task Save()
+    {
+        if (form.LicenseId == 0)  { formError = "Please select a license.";  return; }
+        if (form.CustomerId == 0) { formError = "Please select a customer."; return; }
+        isSaving = true; formError = null;
+        try
+        {
+            if (isEditing)
+            {
+                var e = DbContext.LicenseMembers.Find(editingId);
+                if (e == null) { formError = "Record not found."; return; }
+                e.LicenseId = form.LicenseId; e.CustomerId = form.CustomerId; e.AssignedAt = form.AssignedAt;
+                DbContext.LicenseMembers.Update(e);
+                successMessage = "Assignment updated.";
+            }
+            else
+            {
+                var exists = DbContext.LicenseMembers.Any(m => m.LicenseId == form.LicenseId && m.CustomerId == form.CustomerId);
+                if (exists) { formError = "This customer is already assigned to that license."; return; }
+                DbContext.LicenseMembers.Add(new LicenseMember { LicenseId = form.LicenseId, CustomerId = form.CustomerId, AssignedAt = form.AssignedAt });
+                successMessage = "Member assigned successfully.";
+            }
+            DbContext.SaveChanges();
+            await Load();
+            showForm = false;
+        }
+        catch (Exception ex) { formError = $"Error: {ex.Message}"; }
+        finally { isSaving = false; }
+    }
+
+    private async Task Remove(LicenseMember m)
+    {
+        try
+        {
+            DbContext.LicenseMembers.Remove(m);
+            DbContext.SaveChanges();
+            successMessage = "Member removed from license.";
+            await Load();
+            StateHasChanged();
+        }
+        catch (Exception ex) { successMessage = null; Console.WriteLine(ex.Message); }
+    }
+
+    private sealed class MemberForm
+    {
+        public int      LicenseId  { get; set; }
+        public int      CustomerId { get; set; }
+        public DateTime AssignedAt { get; set; } = DateTime.Today;
+    }
+}
+
+<style>
+    .page-container { padding: 2rem; background: #f5f5f5; min-height: 100vh; }
+    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1); }
+    .page-header h1 { margin: 0; color: #333; font-size: 2rem; }
+    .header-actions { display: flex; gap: .75rem; }
+    .btn { border: none; padding: .65rem 1.25rem; border-radius: 4px; cursor: pointer; font-weight: 500; font-size: .9rem; transition: opacity .2s; }
+    .btn:hover { opacity: .85; }
+    .btn-primary { background: #667eea; color: white; }
+    .btn-success { background: #28a745; color: white; }
+    .btn-secondary { background: #6c757d; color: white; }
+    .alert { padding: 1rem 1.25rem; border-radius: 6px; margin-bottom: 1.25rem; }
+    .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .alert-info { background: #d1ecf1; color: #0c5460; }
+    .alert-danger { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    .alert-warning { background: #fff3cd; color: #856404; }
+    .filter-bar { background: white; padding: 1rem 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1); margin-bottom: 1.5rem; display: flex; gap: 1.5rem; align-items: flex-end; flex-wrap: wrap; }
+    .filter-group { display: flex; flex-direction: column; gap: .3rem; min-width: 280px; }
+    .filter-group label { font-weight: 500; color: #555; font-size: .88rem; }
+    .table-container { background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1); overflow-x: auto; margin-bottom: 1.5rem; }
+    .data-table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+    .data-table thead { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+    .data-table th { padding: .9rem 1rem; text-align: left; font-weight: 600; white-space: nowrap; }
+    .data-table td { padding: .8rem 1rem; border-bottom: 1px solid #e0e0e0; color: #555; }
+    .data-table tbody tr:hover { background: #f9f9f9; }
+    .id-cell { font-weight: 600; color: #667eea; }
+    .key-cell { font-family: monospace; font-size: .82rem; color: #444; }
+    .name-cell { font-weight: 600; color: #333; }
+    .badge-program { background: #eef2ff; color: #667eea; padding: .2rem .65rem; border-radius: 10px; font-size: .78rem; font-weight: 600; }
+    .btn-edit { background: #fff3cd; color: #856404; border: 1px solid #ffc107; padding: .3rem .65rem; border-radius: 4px; cursor: pointer; font-size: .8rem; margin-right: .3rem; }
+    .btn-edit:hover { background: #ffc107; color: #fff; }
+    .btn-delete { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; padding: .3rem .65rem; border-radius: 4px; cursor: pointer; font-size: .8rem; }
+    .btn-delete:hover { background: #dc3545; color: #fff; }
+    .stats { background: white; padding: 1.25rem 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1); }
+    .stats p { margin: 0; color: #555; }
+    .loading { display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 200px; background: white; border-radius: 8px; }
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 1000; }
+    .modal-panel { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 90%; max-width: 540px; max-height: 90vh; overflow-y: auto; background: white; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,.3); z-index: 1001; }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 1.25rem 1.5rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px 12px 0 0; color: white; }
+    .modal-header h2 { margin: 0; font-size: 1.25rem; }
+    .btn-close { background: rgba(255,255,255,.2); border: none; color: white; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 1rem; display: flex; align-items: center; justify-content: center; }
+    .btn-close:hover { background: rgba(255,255,255,.35); }
+    .modal-body { padding: 1.5rem; }
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; font-weight: 500; color: #444; margin-bottom: .35rem; font-size: .9rem; }
+    .form-control { width: 100%; padding: .6rem .85rem; border: 1px solid #d0d0d0; border-radius: 5px; font-size: .9rem; box-sizing: border-box; }
+    .form-control:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,.15); }
+    .modal-footer { display: flex; justify-content: flex-end; gap: .75rem; padding-top: 1rem; border-top: 1px solid #eee; margin-top: .5rem; }
+</style>
