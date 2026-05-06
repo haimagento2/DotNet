@@ -59,11 +59,11 @@ else
                         <tr><th>ID</th><th>License Key</th><th>Program</th><th>Customer</th><th>Company</th><th>Assigned</th><th>Actions</th></tr>
                     </thead>
                     <tbody>
-                        @foreach (var m in filtered)
+                        @foreach (var m in paginatedMembers)
                         {
                             <tr>
                                 <td class="id-cell">@m.Id</td>
-                                <td class="key-cell">@(m.License?.LicenseKey ?? "-")</td>
+                                <td class="key-cell">@(m.License?.LicenseKey.ToString() ?? "-")</td>
                                 <td><span class="badge-program">@(m.License?.Program?.Name ?? "-")</span></td>
                                 <td class="name-cell">@(m.Customer?.FirstName) @(m.Customer?.LastName)</td>
                                 <td>@(m.Customer?.Company?.Name ?? "-")</td>
@@ -77,7 +77,34 @@ else
                     </tbody>
                 </table>
             </div>
-            <div class="stats"><p><strong>Showing:</strong> @filtered.Count of @members.Count total assignments</p></div>
+            <div class="stats">
+                <p>
+                    <strong>Showing:</strong> @paginatedMembers.Count of @filtered.Count total assignments
+                    @if (filterLicenseId != 0)
+                    {
+                        <text> (filtered)</text>
+                    }
+                    &nbsp;|&nbsp;
+                    <strong>Page @currentPage of @totalPages</strong> (@((currentPage - 1) * pageSize + 1)-@Math.Min(currentPage * pageSize, filtered.Count) of @filtered.Count)
+                </p>
+            </div>
+
+            @if (totalPages > 1)
+            {
+                <div class="pagination">
+                    <button class="btn btn-secondary" @onclick="() => GoToPage(1)" disabled="@(!hasPreviousPage)">First</button>
+                    <button class="btn btn-secondary" @onclick="PreviousPage" disabled="@(!hasPreviousPage)">Previous</button>
+                    
+                    @for (int i = Math.Max(1, currentPage - 2); i <= Math.Min(totalPages, currentPage + 2); i++)
+                    {
+                        var pageNum = i;
+                        <button class="btn @(pageNum == currentPage ? "btn-primary" : "btn-outline-primary")" @onclick="() => GoToPage(pageNum)">@pageNum</button>
+                    }
+                    
+                    <button class="btn btn-secondary" @onclick="NextPage" disabled="@(!hasNextPage)">Next</button>
+                    <button class="btn btn-secondary" @onclick="() => GoToPage(totalPages)" disabled="@(!hasNextPage)">Last</button>
+                </div>
+            }
         }
     </div>
 
@@ -150,6 +177,44 @@ else
     private string? successMessage, formError;
     private MemberForm form = new();
     private int editingId;
+    private int currentPage = 1;
+    private int pageSize = 20;
+    private int totalRecords = 0;
+
+    private int totalPages => (int)Math.Ceiling((double)filtered.Count / pageSize);
+    private bool hasPreviousPage => currentPage > 1;
+    private bool hasNextPage => currentPage < totalPages;
+    private List<LicenseMember> paginatedMembers => filtered
+        .Skip((currentPage - 1) * pageSize)
+        .Take(pageSize)
+        .ToList();
+
+    private async Task GoToPage(int page)
+    {
+        if (page >= 1 && page <= totalPages)
+        {
+            currentPage = page;
+            StateHasChanged();
+        }
+    }
+
+    private async Task PreviousPage()
+    {
+        if (hasPreviousPage)
+        {
+            currentPage--;
+            StateHasChanged();
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (hasNextPage)
+        {
+            currentPage++;
+            StateHasChanged();
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -166,15 +231,22 @@ else
             .OrderBy(m => m.LicenseId).ThenBy(m => m.Id)
             .ToList();
 
-        allLicenses  = DbContext.Licenses.Include(l => l.Program).Include(l => l.Company).OrderBy(l => l.LicenseKey).ToList();
+        totalRecords = members.Count;
+        allLicenses  = DbContext.Licenses.Include(l => l.Program).Include(l => l.Company).OrderBy(l => l.Id).ToList();
         allCustomers = DbContext.Customers.Include(c => c.Company).OrderBy(c => c.FirstName).ToList();
     }
 
-    private async Task RefreshData() { await Load(); successMessage = null; StateHasChanged(); }
+    private async Task RefreshData() { currentPage = 1; await Load(); successMessage = null; StateHasChanged(); }
 
     private void FilterChanged(ChangeEventArgs e)
     {
         filterLicenseId = int.TryParse(e.Value?.ToString(), out var id) ? id : 0;
+        currentPage = 1; // Reset to first page when filter changes
+        // Ensure page is valid
+        if (currentPage > totalPages && totalPages > 0)
+        {
+            currentPage = totalPages;
+        }
         StateHasChanged();
     }
 
@@ -204,7 +276,9 @@ else
             {
                 var e = DbContext.LicenseMembers.Find(editingId);
                 if (e == null) { formError = "Record not found."; return; }
-                e.LicenseId = form.LicenseId; e.CustomerId = form.CustomerId; e.AssignedAt = form.AssignedAt;
+                var license = DbContext.Licenses.Find(form.LicenseId);
+                e.LicenseId = form.LicenseId; e.CustomerId = form.CustomerId; e.OwnerId = license?.OwnerId; e.AssignedAt = form.AssignedAt;
+                e.UpdatedAt = DateTime.Now;
                 DbContext.LicenseMembers.Update(e);
                 successMessage = "Assignment updated.";
             }
@@ -212,7 +286,8 @@ else
             {
                 var exists = DbContext.LicenseMembers.Any(m => m.LicenseId == form.LicenseId && m.CustomerId == form.CustomerId);
                 if (exists) { formError = "This customer is already assigned to that license."; return; }
-                DbContext.LicenseMembers.Add(new LicenseMember { LicenseId = form.LicenseId, CustomerId = form.CustomerId, AssignedAt = form.AssignedAt });
+                var license = DbContext.Licenses.Find(form.LicenseId);
+                DbContext.LicenseMembers.Add(new LicenseMember { LicenseId = form.LicenseId, CustomerId = form.CustomerId, OwnerId = license?.OwnerId, AssignedAt = form.AssignedAt });
                 successMessage = "Member assigned successfully.";
             }
             DbContext.SaveChanges();
@@ -278,6 +353,10 @@ else
     .btn-delete:hover { background: #dc3545; color: #fff; }
     .stats { background: white; padding: 1.25rem 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1); }
     .stats p { margin: 0; color: #555; }
+    .pagination { display: flex; justify-content: center; gap: .5rem; margin-top: 1rem; flex-wrap: wrap; }
+    .pagination .btn { padding: .5rem 1rem; min-width: auto; }
+    .btn-outline-primary { background: white; color: #667eea; border: 1px solid #667eea; }
+    .btn-outline-primary:hover { background: #667eea; color: white; }
     .loading { display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 200px; background: white; border-radius: 8px; }
     .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 1000; }
     .modal-panel { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 90%; max-width: 540px; max-height: 90vh; overflow-y: auto; background: white; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,.3); z-index: 1001; }

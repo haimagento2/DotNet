@@ -180,6 +180,7 @@ else
                 var e = DbContext.Programs.Find(editingId);
                 if (e == null) { formError = "Program not found."; return; }
                 e.Name = form.Name; e.Description = form.Description; e.Version = form.Version; e.Price = form.Price;
+                e.UpdatedAt = DateTime.Now;
                 DbContext.Programs.Update(e);
                 successMessage = $"Program '{e.Name}' updated.";
             }

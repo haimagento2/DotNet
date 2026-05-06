@@ -205,6 +205,7 @@ else
                 var entity = DbContext.CustomerGroups.Find(editingId);
                 if (entity == null) { formError = "Group not found."; return; }
                 entity.Name = form.Name; entity.Description = form.Description;
+                entity.UpdatedAt = DateTime.Now;
                 DbContext.CustomerGroups.Update(entity);
                 successMessage = $"Group '{entity.Name}' updated.";
             }

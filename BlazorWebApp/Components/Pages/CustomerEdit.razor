@@ -1,0 +1,231 @@
+@page "/customers/edit/{id:int}"
+@rendermode InteractiveServer
+@using BlazorWebApp.Data
+@using BlazorWebApp.Models
+@using Microsoft.EntityFrameworkCore
+@inject AuthenticationService AuthService
+@inject NavigationManager Navigation
+@inject ApplicationDbContext DbContext
+
+<PageTitle>@(customer == null ? "Customer Not Found" : $"Edit {customer.FirstName} {customer.LastName}")</PageTitle>
+
+@if (!AuthService.IsAuthenticated())
+{
+    <div class="alert alert-warning">
+        You are not authorized. Please <a href="/login">login</a> first.
+    </div>
+}
+else if (customer == null)
+{
+    <div class="alert alert-danger">Customer not found.</div>
+}
+else
+{
+    <div class="customer-edit-container">
+        <div class="page-header">
+            <h1>Edit Customer</h1>
+            <div class="header-actions">
+                <button class="btn btn-secondary" @onclick="GoBack">← Back to Customers</button>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(successMessage))
+        {
+            <div class="alert alert-success">@successMessage</div>
+        }
+
+        <div class="edit-form-container">
+            <EditForm Model="formModel" OnValidSubmit="SaveCustomer">
+                <DataAnnotationsValidator />
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>First Name *</label>
+                        <InputText class="form-control" @bind-Value="formModel.FirstName" placeholder="First name" />
+                        <ValidationMessage For="@(() => formModel.FirstName)" />
+                    </div>
+                    <div class="form-group">
+                        <label>Last Name *</label>
+                        <InputText class="form-control" @bind-Value="formModel.LastName" placeholder="Last name" />
+                        <ValidationMessage For="@(() => formModel.LastName)" />
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Email *</label>
+                    <InputText class="form-control" @bind-Value="formModel.Email" placeholder="email@example.com" />
+                    <ValidationMessage For="@(() => formModel.Email)" />
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Phone</label>
+                        <InputText class="form-control" @bind-Value="formModel.Phone" placeholder="+1-555-0000" />
+                    </div>
+                    <div class="form-group">
+                        <label>City</label>
+                        <InputText class="form-control" @bind-Value="formModel.City" placeholder="City" />
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Company</label>
+                        <InputSelect class="form-control" @bind-Value="formModel.CompanyId">
+                            <option value="">— None —</option>
+                            @foreach (var c in companies)
+                            {
+                                <option value="@c.Id">@c.Name</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    <div class="form-group">
+                        <label>Customer Group</label>
+                        <InputSelect class="form-control" @bind-Value="formModel.CustomerGroupId">
+                            <option value="">— None —</option>
+                            @foreach (var g in groups)
+                            {
+                                <option value="@g.Id">@g.Name</option>
+                            }
+                        </InputSelect>
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(formError))
+                {
+                    <div class="alert alert-danger">@formError</div>
+                }
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" @onclick="GoBack">Cancel</button>
+                    <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                        @(isSaving ? "Saving…" : "Save Changes")
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+    private Customer? customer;
+    private List<Company> companies = new();
+    private List<CustomerGroup> groups = new();
+    private bool isSaving;
+    private string? successMessage;
+    private string? formError;
+    private CustomerFormModel formModel = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!AuthService.IsAuthenticated()) { Navigation.NavigateTo("/login"); return; }
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        customer = DbContext.Customers
+            .Include(c => c.Company)
+            .Include(c => c.CustomerGroup)
+            .FirstOrDefault(c => c.Id == Id);
+
+        if (customer == null)
+        {
+            return;
+        }
+
+        companies = DbContext.Companies.OrderBy(c => c.Name).ToList();
+        groups = DbContext.CustomerGroups.OrderBy(g => g.Name).ToList();
+
+        formModel = new CustomerFormModel
+        {
+            FirstName = customer.FirstName,
+            LastName = customer.LastName,
+            Email = customer.Email,
+            Phone = customer.Phone,
+            City = customer.City,
+            CompanyId = customer.CompanyId,
+            CustomerGroupId = customer.CustomerGroupId
+        };
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/customers");
+    }
+
+    private async Task SaveCustomer()
+    {
+        if (customer == null) return;
+
+        isSaving = true;
+        formError = null;
+
+        try
+        {
+            customer.FirstName = formModel.FirstName;
+            customer.LastName = formModel.LastName;
+            customer.Email = formModel.Email;
+            customer.Phone = formModel.Phone;
+            customer.City = formModel.City;
+            customer.CompanyId = formModel.CompanyId;
+            customer.CustomerGroupId = formModel.CustomerGroupId;
+            customer.UpdatedAt = DateTime.Now;
+
+            DbContext.Customers.Update(customer);
+            DbContext.SaveChanges();
+
+            successMessage = $"Customer '{customer.FirstName} {customer.LastName}' updated successfully.";
+        }
+        catch (Exception ex)
+        {
+            formError = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private sealed class CustomerFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        public string FirstName { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required]
+        public string LastName { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.EmailAddress]
+        public string Email { get; set; } = string.Empty;
+
+        public string? Phone { get; set; }
+        public string? City { get; set; }
+        public int? CompanyId { get; set; }
+        public int? CustomerGroupId { get; set; }
+    }
+}
+
+<style>
+    .customer-edit-container { padding: 2rem; background: #f5f5f5; min-height: 100vh; }
+    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1); }
+    .page-header h1 { margin: 0; color: #333; font-size: 2rem; }
+    .header-actions { display: flex; gap: .75rem; }
+    .edit-form-container { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1); max-width: 800px; margin: 0 auto; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; font-weight: 500; color: #444; margin-bottom: .35rem; font-size: .9rem; }
+    .form-control { width: 100%; padding: .6rem .85rem; border: 1px solid #d0d0d0; border-radius: 5px; font-size: .9rem; box-sizing: border-box; }
+    .form-control:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,.15); }
+    .form-actions { display: flex; justify-content: flex-end; gap: .75rem; margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #eee; }
+    .btn { border: none; padding: .65rem 1.25rem; border-radius: 4px; cursor: pointer; font-weight: 500; font-size: .9rem; transition: opacity .2s; }
+    .btn:hover { opacity: .85; }
+    .btn-primary { background: #667eea; color: white; }
+    .btn-secondary { background: #6c757d; color: white; }
+    .alert { padding: 1rem 1.25rem; border-radius: 6px; margin-bottom: 1.25rem; }
+    .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .alert-danger { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    .alert-warning { background: #fff3cd; color: #856404; }
+    @@media (max-width: 600px) { .form-row { grid-template-columns: 1fr; } .page-header { flex-direction: column; gap: 1rem; } }
+</style>

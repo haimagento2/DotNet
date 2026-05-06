@@ -11,6 +11,7 @@ namespace BlazorWebApp.Models
         public int? CompanyId { get; set; }
         public int? CustomerGroupId { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime? UpdatedAt { get; set; }
 
         public Company? Company { get; set; }
         public CustomerGroup? CustomerGroup { get; set; }

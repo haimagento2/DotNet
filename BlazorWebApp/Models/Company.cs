@@ -10,6 +10,7 @@ namespace BlazorWebApp.Models
         public string Email { get; set; } = string.Empty;
         public string Website { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime? UpdatedAt { get; set; }
         public ICollection<Customer> Customers { get; set; } = new List<Customer>();
     }
 }

@@ -210,6 +210,7 @@ else
                 if (entity == null) { formError = "Company not found."; return; }
                 entity.Name = form.Name; entity.Industry = form.Industry; entity.City = form.City;
                 entity.Phone = form.Phone; entity.Email = form.Email; entity.Website = form.Website;
+                entity.UpdatedAt = DateTime.Now;
                 DbContext.Companies.Update(entity);
                 successMessage = $"Company '{entity.Name}' updated.";
             }

@@ -21,8 +21,29 @@ else
             <div class="header-actions">
                 <button class="btn btn-success" @onclick="OpenAdd">+ Add License</button>
                 <button class="btn btn-secondary" @onclick="RefreshData">🔄 Refresh</button>
+                    <div class="columns-toggle">
+                        <button class="btn btn-secondary" @onclick="ToggleColumnsMenu">Columns ▾</button>
+                        @if (showColumnsMenu)
+                        {
+                            <div class="columns-dropdown">
+                                <label><input type="checkbox" @bind="showIdColumn" /> ID</label>
+                                <label><input type="checkbox" @bind="showLicenseKeyColumn" /> License Key</label>
+                                <label><input type="checkbox" @bind="showProgramColumn" /> Program</label>
+                                <label><input type="checkbox" @bind="showOwnerColumn" /> Owner</label>
+                                <label><input type="checkbox" @bind="showCompanyColumn" /> Company</label>
+                                <label><input type="checkbox" @bind="showCustomerGroupColumn" /> Customer Group</label>
+                                <label><input type="checkbox" @bind="showTypeColumn" /> Type</label>
+                                <label><input type="checkbox" @bind="showStatusColumn" /> Status</label>
+                                <label><input type="checkbox" @bind="showMembersColumn" /> Members</label>
+                                <label><input type="checkbox" @bind="showMaxColumn" /> Max</label>
+                                <label><input type="checkbox" @bind="showStartColumn" /> Start</label>
+                                <label><input type="checkbox" @bind="showExpiryColumn" /> Expiry</label>
+                                <label><input type="checkbox" @bind="showActionsColumn" /> Actions</label>
+                            </div>
+                        }
+                    </div>
+                </div>
             </div>
-        </div>
 
         @if (!string.IsNullOrEmpty(successMessage))
         {
@@ -43,30 +64,79 @@ else
                 <table class="data-table">
                     <thead>
                         <tr>
-                            <th>ID</th><th>License Key</th><th>Program</th><th>Company</th>
-                            <th>Status</th><th>Members</th><th>Max</th><th>Start</th><th>Expiry</th><th>Actions</th>
+                            @if (showIdColumn) { <th>ID</th> }
+                            @if (showLicenseKeyColumn) { <th>License Key</th> }
+                            @if (showProgramColumn) { <th>Program</th> }
+                            @if (showOwnerColumn) { <th>Owner</th> }
+                            @if (showCompanyColumn) { <th>Company</th> }
+                            @if (showCustomerGroupColumn) { <th>Customer Group</th> }
+                            @if (showTypeColumn) { <th>Type</th> }
+                            @if (showStatusColumn) { <th>Status</th> }
+                            @if (showMembersColumn) { <th>Members</th> }
+                            @if (showMaxColumn) { <th>Max</th> }
+                            @if (showStartColumn) { <th>Start Date</th> }
+                            @if (showExpiryColumn) { <th>Expiry Date</th> }
+                            @if (showActionsColumn) { <th>Actions</th> }
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var lic in licenses)
                         {
                             <tr>
-                                <td class="id-cell">@lic.Id</td>
-                                <td class="key-cell">@lic.LicenseKey</td>
-                                <td><span class="badge-program">@(lic.Program?.Name ?? "-")</span></td>
-                                <td>@(lic.Company?.Name ?? "-")</td>
-                                <td><span class="badge-status @lic.Status.ToLower()">@lic.Status</span></td>
-                                <td class="count-cell">@lic.Members.Count</td>
-                                <td class="count-cell">@lic.MaxMembers</td>
-                                <td>@lic.StartDate.ToString("yyyy-MM-dd")</td>
-                                <td>@lic.ExpiryDate.ToString("yyyy-MM-dd")</td>
-                                <td><button class="btn-edit" @onclick="() => OpenEdit(lic)">✏️ Edit</button></td>
+                                @if (showIdColumn) { <td class="id-cell">@lic.Id</td> }
+                                @if (showLicenseKeyColumn) { <td class="key-cell">@lic.LicenseKey</td> }
+                                @if (showProgramColumn) { <td><span class="badge-program">@(lic.Program?.Name ?? "-")</span></td> }
+                                @if (showOwnerColumn)
+                                {
+                                    <td>
+                                        @if (lic.Owner is Customer owner)
+                                        {
+                                            <a href="/customers/edit/@owner.Id" class="customer-link">@owner.FirstName @owner.LastName</a>
+                                        }
+                                        else
+                                        {
+                                            <span>-</span>
+                                        }
+                                    </td>
+                                }
+                                @if (showCompanyColumn) { <td>@(lic.Owner?.Company?.Name ?? "-")</td> }
+                                @if (showCustomerGroupColumn) { <td>@(lic.Owner?.CustomerGroup?.Name ?? "-")</td> }
+                                @if (showTypeColumn) { <td>@lic.SubLicenseType</td> }
+                                @if (showStatusColumn) { <td><span class="badge-status @lic.Status.ToLower()">@lic.Status</span></td> }
+                                @if (showMembersColumn) { <td class="count-cell">@lic.Members.Count</td> }
+                                @if (showMaxColumn) { <td class="count-cell">@lic.MaxMembers</td> }
+                                @if (showStartColumn) { <td>@lic.StartDate.ToString("yyyy-MM-dd")</td> }
+                                @if (showExpiryColumn) { <td>@lic.ExpiryDate.ToString("yyyy-MM-dd")</td> }
+                                @if (showActionsColumn) { <td><button class="btn-edit" @onclick="() => OpenEdit(lic)">✏️ Edit</button></td> }
                             </tr>
                         }
                     </tbody>
                 </table>
             </div>
-            <div class="stats"><p><strong>Total Licenses:</strong> @licenses.Count &nbsp;|&nbsp; <strong>Active:</strong> @licenses.Count(l => l.Status == "Active")</p></div>
+            <div class="stats">
+                <p>
+                    <strong>Total Licenses:</strong> @totalRecords &nbsp;|&nbsp;
+                    <strong>Active:</strong> @licenses?.Count(l => l.Status == "Active") &nbsp;|&nbsp;
+                    <strong>Page @currentPage of @totalPages</strong> (@((currentPage - 1) * pageSize + 1)-@Math.Min(currentPage * pageSize, totalRecords) of @totalRecords)
+                </p>
+            </div>
+
+            @if (totalPages > 1)
+            {
+                <div class="pagination">
+                    <button class="btn btn-secondary" @onclick="() => GoToPage(1)" disabled="@(!hasPreviousPage)">First</button>
+                    <button class="btn btn-secondary" @onclick="PreviousPage" disabled="@(!hasPreviousPage)">Previous</button>
+                    
+                    @for (int i = Math.Max(1, currentPage - 2); i <= Math.Min(totalPages, currentPage + 2); i++)
+                    {
+                        var pageNum = i;
+                        <button class="btn @(pageNum == currentPage ? "btn-primary" : "btn-outline-primary")" @onclick="() => GoToPage(pageNum)">@pageNum</button>
+                    }
+                    
+                    <button class="btn btn-secondary" @onclick="NextPage" disabled="@(!hasNextPage)">Next</button>
+                    <button class="btn btn-secondary" @onclick="() => GoToPage(totalPages)" disabled="@(!hasNextPage)">Last</button>
+                </div>
+            }
         }
     </div>
 
@@ -84,7 +154,7 @@ else
 
                     <div class="form-group">
                         <label>License Key *</label>
-                        <InputText class="form-control" @bind-Value="form.LicenseKey" placeholder="e.g. LIC-2025-PRO-001" />
+                        <InputNumber class="form-control" @bind-Value="form.LicenseKey" placeholder="e.g. 12345" />
                         <ValidationMessage For="@(() => form.LicenseKey)" />
                     </div>
 
@@ -108,6 +178,35 @@ else
                                 {
                                     <option value="@c.Id">@c.Name</option>
                                 }
+                            </InputSelect>
+                        </div>
+                                        <div class="form-group">
+                            <label>Customer Group</label>
+                            <InputSelect class="form-control" @bind-Value="form.CustomerGroupId">
+                                <option value="">— None —</option>
+                                @foreach (var g in customerGroups)
+                                {
+                                    <option value="@g.Id">@g.Name</option>
+                                }
+                            </InputSelect>
+                        </div>
+                        <div class="form-group">
+                            <label>License Owner</label>
+                            <InputSelect class="form-control" @bind-Value="form.OwnerId">
+                                <option value="0">— Select Owner —</option>
+                                @foreach (var c in owners)
+                                {
+                                    <option value="@c.Id">#@c.Id — @c.FirstName @c.LastName — @c.Email — @(c.CustomerGroup?.Name ?? "No group") — @(c.Company?.Name ?? "No company")</option>
+                                }
+                            </InputSelect>
+                            <ValidationMessage For="@(() => form.OwnerId)" />
+                        </div>
+                        <div class="form-group">
+                            <label>Sub License Type</label>
+                            <InputSelect class="form-control" @bind-Value="form.SubLicenseType">
+                                <option value="1">Team size</option>
+                                <option value="2">Qty purchase</option>
+                                <option value="3">Seminar</option>
                             </InputSelect>
                         </div>
                     </div>
@@ -148,6 +247,12 @@ else
                                     @editingMembers.Count / @form.MaxMembers
                                 </span>
                             </div>
+                            <div class="share-summary">
+                                <span>Sharing scope:</span>
+                                <strong>@shareableScope</strong>
+                                <span>Eligible customers:</span>
+                                <strong>@shareableCustomerCount</strong>
+                            </div>
                             @if (editingMembers.Count > 0)
                             {
                                 <div class="members-list">
@@ -155,8 +260,10 @@ else
                                     {
                                         <div class="member-row">
                                             <div class="member-info">
+                                                <span class="member-meta">ID: @m.Customer?.Id</span>
                                                 <span class="member-name">@m.Customer?.FirstName @m.Customer?.LastName</span>
-                                                <span class="member-company">@(m.Customer?.Company?.Name ?? "—")</span>
+                                                <span class="member-company">Company: @(m.Customer?.Company?.Name ?? "—")</span>
+                                                <span class="member-company">Group: @(m.Customer?.CustomerGroup?.Name ?? "—")</span>
                                             </div>
                                             <div class="member-meta">
                                                 <span class="member-date">@m.AssignedAt.ToString("yyyy-MM-dd")</span>
@@ -189,8 +296,8 @@ else
                                             <label class="customer-item @(isSelected ? "selected" : "")">
                                                 <input type="checkbox" checked="@isSelected" @onchange="() => ToggleCustomer(cid)" />
                                                 <div class="customer-item-info">
-                                                    <span class="customer-item-name">@c.FirstName @c.LastName</span>
-                                                    <span class="customer-item-sub">@(c.Company?.Name ?? "—")@(!string.IsNullOrEmpty(c.City) ? " · " + c.City : "")</span>
+                                                    <span class="customer-item-name">#@c.Id — @c.FirstName @c.LastName</span>
+                                                    <span class="customer-item-sub">@(c.Company?.Name ?? "—") · @(c.CustomerGroup?.Name ?? "—")@(!string.IsNullOrEmpty(c.City) ? " · " + c.City : "")</span>
                                                 </div>
                                             </label>
                                         }
@@ -232,25 +339,87 @@ else
     private List<License>?      licenses;
     private List<AppProgram>    programs       = new();
     private List<Company>       companies      = new();
+    private List<CustomerGroup> customerGroups = new();
     private List<LicenseMember> editingMembers = new();
     private List<Customer>      allCustomers   = new();
+    private List<Customer>      owners         = new();
     private bool showForm, isEditing, isSaving;
+    private bool showColumnsMenu;
+    private bool showIdColumn = true;
+    private bool showLicenseKeyColumn = true;
+    private bool showProgramColumn = true;
+    private bool showOwnerColumn = true;
+    private bool showCompanyColumn = true;
+    private bool showCustomerGroupColumn = true;
+    private bool showTypeColumn = true;
+    private bool showStatusColumn = true;
+    private bool showMembersColumn = true;
+    private bool showMaxColumn = true;
+    private bool showStartColumn = true;
+    private bool showExpiryColumn = true;
+    private bool showActionsColumn = true;
     private string? successMessage, formError, memberError;
     private LicenseForm form = new();
-    private int editingId;
+    private int editingLicenseId;
     private string customerSearch = string.Empty;
     private HashSet<int> selectedCustomerIds = new();
+    private int currentPage = 1;
+    private int pageSize = 20;
+    private int totalRecords = 0;
 
+    private int totalPages => (int)Math.Ceiling((double)totalRecords / pageSize);
+    private bool hasPreviousPage => currentPage > 1;
+    private bool hasNextPage => currentPage < totalPages;
+
+    private async Task GoToPage(int page)
+    {
+        if (page >= 1 && page <= totalPages)
+        {
+            currentPage = page;
+            await Load();
+        }
+    }
+
+    private async Task PreviousPage()
+    {
+        if (hasPreviousPage)
+        {
+            currentPage--;
+            await Load();
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (hasNextPage)
+        {
+            currentPage++;
+            await Load();
+        }
+    }
     private IEnumerable<Customer> availableCustomers => allCustomers
         .Where(c => !editingMembers.Any(m => m.CustomerId == c.Id))
         .Where(c => string.IsNullOrEmpty(customerSearch) ||
                     $"{c.FirstName} {c.LastName}".Contains(customerSearch, StringComparison.OrdinalIgnoreCase) ||
                     (c.Company?.Name ?? "").Contains(customerSearch, StringComparison.OrdinalIgnoreCase) ||
+                    (c.CustomerGroup?.Name ?? "").Contains(customerSearch, StringComparison.OrdinalIgnoreCase) ||
                     c.City.Contains(customerSearch, StringComparison.OrdinalIgnoreCase));
+
+    private int shareableCustomerCount => allCustomers.Count;
+    private string shareableScope => form.CompanyId.HasValue
+        ? $"Company: {companies.FirstOrDefault(c => c.Id == form.CompanyId)?.Name ?? "Unknown"}"
+        : form.CustomerGroupId.HasValue
+            ? $"Group: {customerGroups.FirstOrDefault(g => g.Id == form.CustomerGroupId)?.Name ?? "Unknown"}"
+            : "None selected";
 
     private void ToggleCustomer(int id)
     {
         if (!selectedCustomerIds.Add(id)) selectedCustomerIds.Remove(id);
+    }
+
+    private void ToggleColumnsMenu()
+    {
+        showColumnsMenu = !showColumnsMenu;
     }
 
     protected override async Task OnInitializedAsync()
@@ -261,12 +430,41 @@ else
 
     private async Task Load()
     {
-        licenses  = DbContext.Licenses.Include(l => l.Program).Include(l => l.Company).Include(l => l.Members).OrderBy(l => l.Id).ToList();
+        var query = DbContext.Licenses
+            .Include(l => l.Program)
+            .Include(l => l.Company)
+            .Include(l => l.CustomerGroup)
+            .Include(l => l.Owner)
+                .ThenInclude(o => o!.Company)
+            .Include(l => l.Owner)
+                .ThenInclude(o => o!.CustomerGroup)
+            .Include(l => l.Members);
+
+        totalRecords = query.Count();
+        licenses = query
+            .OrderBy(l => l.LicenseKey)
+            .Skip((currentPage - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+
+        // Ensure current page is valid
+        if (currentPage > totalPages && totalPages > 0)
+        {
+            currentPage = totalPages;
+            licenses = query
+                .OrderBy(l => l.LicenseKey)
+                .Skip((currentPage - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+        }
+
         programs  = DbContext.Programs.OrderBy(p => p.Name).ToList();
         companies = DbContext.Companies.OrderBy(c => c.Name).ToList();
+        customerGroups = DbContext.CustomerGroups.OrderBy(g => g.Name).ToList();
+        owners = DbContext.Customers.Include(c => c.Company).Include(c => c.CustomerGroup).OrderBy(c => c.Id).ToList();
     }
 
-    private async Task RefreshData() { await Load(); successMessage = null; StateHasChanged(); }
+    private async Task RefreshData() { currentPage = 1; await Load(); successMessage = null; StateHasChanged(); }
 
     private void OpenAdd()
     {
@@ -276,12 +474,17 @@ else
 
     private void OpenEdit(License l)
     {
-        editingId = l.Id;
-        form = new LicenseForm { LicenseKey = l.LicenseKey, ProgramId = l.ProgramId, CompanyId = l.CompanyId, StartDate = l.StartDate, ExpiryDate = l.ExpiryDate, MaxMembers = l.MaxMembers, Status = l.Status };
+        editingLicenseId = l.Id;
+        form = new LicenseForm { LicenseKey = l.LicenseKey, ProgramId = l.ProgramId, CompanyId = l.CompanyId, CustomerGroupId = l.CustomerGroupId, OwnerId = l.OwnerId ?? 0, SubLicenseType = l.SubLicenseType, StartDate = l.StartDate, ExpiryDate = l.ExpiryDate, MaxMembers = l.MaxMembers, Status = l.Status };
         editingMembers = DbContext.LicenseMembers
             .Include(m => m.Customer).ThenInclude(c => c!.Company)
+            .Include(m => m.Customer).ThenInclude(c => c!.CustomerGroup)
             .Where(m => m.LicenseId == l.Id).ToList();
-        allCustomers = DbContext.Customers.Include(c => c.Company).OrderBy(c => c.FirstName).ToList();
+        allCustomers = DbContext.Customers
+            .Include(c => c.Company)
+            .Include(c => c.CustomerGroup)
+            .Where(c => (l.CompanyId.HasValue && c.CompanyId == l.CompanyId) || (l.CustomerGroupId.HasValue && c.CustomerGroupId == l.CustomerGroupId))
+            .OrderBy(c => c.FirstName).ToList();
         customerSearch = string.Empty; selectedCustomerIds = new(); memberError = null;
         isEditing = true; formError = null; successMessage = null; showForm = true;
     }
@@ -294,15 +497,22 @@ else
         memberError = null;
         try
         {
+                var license = DbContext.Licenses.Find(editingLicenseId);
+            if (license != null && license.SubLicenseType != LicenseType.Seminar && editingMembers.Count + selectedCustomerIds.Count > license.MaxMembers)
+            {
+                memberError = $"This license only supports {license.MaxMembers} members.";
+                return;
+            }
+
             foreach (var cid in selectedCustomerIds)
             {
-                if (!DbContext.LicenseMembers.Any(m => m.LicenseId == editingId && m.CustomerId == cid))
-                    DbContext.LicenseMembers.Add(new LicenseMember { LicenseId = editingId, CustomerId = cid, AssignedAt = DateTime.Today });
+                if (!DbContext.LicenseMembers.Any(m => m.LicenseId == editingLicenseId && m.CustomerId == cid))
+                    DbContext.LicenseMembers.Add(new LicenseMember { LicenseId = editingLicenseId, CustomerId = cid, OwnerId = license?.OwnerId, AssignedAt = DateTime.Today });
             }
             DbContext.SaveChanges();
             editingMembers = DbContext.LicenseMembers
                 .Include(m => m.Customer).ThenInclude(c => c!.Company)
-                .Where(m => m.LicenseId == editingId).ToList();
+                .Where(m => m.LicenseId == editingLicenseId).ToList();
             selectedCustomerIds = new();
             await Load();
         }
@@ -318,7 +528,7 @@ else
             if (entity != null) { DbContext.LicenseMembers.Remove(entity); DbContext.SaveChanges(); }
             editingMembers = DbContext.LicenseMembers
                 .Include(em => em.Customer).ThenInclude(c => c!.Company)
-                .Where(em => em.LicenseId == editingId).ToList();
+                .Where(em => em.LicenseId == editingLicenseId).ToList();
             await Load();
         }
         catch (Exception ex) { memberError = $"Error: {ex.Message}"; }
@@ -327,21 +537,31 @@ else
     private async Task Save()
     {
         if (form.ProgramId == 0) { formError = "Please select a program."; return; }
+        if (form.OwnerId == 0) { formError = "Please select a license owner."; return; }
         isSaving = true; formError = null;
         try
         {
             if (isEditing)
             {
-                var e = DbContext.Licenses.Find(editingId);
+                var e = DbContext.Licenses.Find(editingLicenseId);
                 if (e == null) { formError = "License not found."; return; }
-                e.LicenseKey = form.LicenseKey; e.ProgramId = form.ProgramId; e.CompanyId = form.CompanyId;
+                e.LicenseKey = form.LicenseKey; e.ProgramId = form.ProgramId; e.CompanyId = form.CompanyId; e.CustomerGroupId = form.CustomerGroupId;
+                e.OwnerId = form.OwnerId == 0 ? null : form.OwnerId;
+                e.SubLicenseType = form.SubLicenseType;
                 e.StartDate = form.StartDate; e.ExpiryDate = form.ExpiryDate; e.MaxMembers = form.MaxMembers; e.Status = form.Status;
+                e.UpdatedAt = DateTime.Now;
                 DbContext.Licenses.Update(e);
+                var membersToUpdate = DbContext.LicenseMembers.Where(m => m.LicenseId == editingLicenseId).ToList();
+                foreach (var member in membersToUpdate)
+                {
+                    member.OwnerId = e.OwnerId;
+                    DbContext.LicenseMembers.Update(member);
+                }
                 successMessage = $"License '{e.LicenseKey}' updated.";
             }
             else
             {
-                var e = new License { LicenseKey = form.LicenseKey, ProgramId = form.ProgramId, CompanyId = form.CompanyId, StartDate = form.StartDate, ExpiryDate = form.ExpiryDate, MaxMembers = form.MaxMembers, Status = form.Status, CreatedAt = DateTime.Now };
+                var e = new License { LicenseKey = form.LicenseKey, ProgramId = form.ProgramId, CompanyId = form.CompanyId, CustomerGroupId = form.CustomerGroupId, OwnerId = form.OwnerId == 0 ? null : form.OwnerId, SubLicenseType = form.SubLicenseType, StartDate = form.StartDate, ExpiryDate = form.ExpiryDate, MaxMembers = form.MaxMembers, Status = form.Status, CreatedAt = DateTime.Now };
                 DbContext.Licenses.Add(e);
                 successMessage = $"License '{e.LicenseKey}' added.";
             }
@@ -355,9 +575,12 @@ else
 
     private sealed class LicenseForm
     {
-        [System.ComponentModel.DataAnnotations.Required] public string LicenseKey { get; set; } = string.Empty;
-        public int   ProgramId  { get; set; }
-        public int?  CompanyId  { get; set; }
+        [System.ComponentModel.DataAnnotations.Required] public int LicenseKey { get; set; }
+        public int   ProgramId   { get; set; }
+        public int   OwnerId     { get; set; }
+        public int?  CompanyId   { get; set; }
+        public int?  CustomerGroupId  { get; set; }
+        public LicenseType SubLicenseType { get; set; } = LicenseType.TeamSize;
         public DateTime StartDate  { get; set; } = DateTime.Today;
         public DateTime ExpiryDate { get; set; } = DateTime.Today.AddYears(1);
         public int   MaxMembers { get; set; } = 5;
@@ -369,7 +592,11 @@ else
     .page-container { padding: 2rem; background: #f5f5f5; min-height: 100vh; }
     .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1); }
     .page-header h1 { margin: 0; color: #333; font-size: 2rem; }
-    .header-actions { display: flex; gap: .75rem; }
+    .header-actions { display: flex; gap: .75rem; align-items: center; position: relative; }
+    .columns-toggle { position: relative; }
+    .columns-dropdown { position: absolute; right: 0; top: calc(100% + .5rem); background: white; border: 1px solid #d0d0d0; border-radius: 8px; box-shadow: 0 8px 20px rgba(0,0,0,.12); padding: .75rem; display: grid; gap: .5rem; min-width: 180px; z-index: 10; }
+    .columns-dropdown label { display: flex; align-items: center; gap: .5rem; font-size: .88rem; color: #333; cursor: pointer; }
+    .columns-dropdown input[type="checkbox"] { accent-color: #667eea; width: 16px; height: 16px; }
     .btn { border: none; padding: .65rem 1.25rem; border-radius: 4px; cursor: pointer; font-weight: 500; font-size: .9rem; transition: opacity .2s; }
     .btn:hover { opacity: .85; }
     .btn-primary { background: #667eea; color: white; }
@@ -398,6 +625,10 @@ else
     .btn-edit:hover { background: #ffc107; color: #fff; }
     .stats { background: white; padding: 1.25rem 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1); }
     .stats p { margin: 0; color: #555; }
+    .pagination { display: flex; justify-content: center; gap: .5rem; margin-top: 1rem; flex-wrap: wrap; }
+    .pagination .btn { padding: .5rem 1rem; min-width: auto; }
+    .customer-link { color: #667eea; text-decoration: none; font-weight: 500; }
+    .customer-link:hover { text-decoration: underline; }
     .loading { display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 200px; background: white; border-radius: 8px; }
     .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 1000; }
     .modal-panel { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; background: white; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,.3); z-index: 1001; }

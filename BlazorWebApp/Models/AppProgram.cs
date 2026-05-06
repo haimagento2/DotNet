@@ -8,6 +8,7 @@ namespace BlazorWebApp.Models
         public string Version { get; set; } = string.Empty;
         public decimal Price { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime? UpdatedAt { get; set; }
 
         public ICollection<License> Licenses { get; set; } = new List<License>();
     }
