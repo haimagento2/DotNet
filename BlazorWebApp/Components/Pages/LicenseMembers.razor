@@ -56,7 +56,7 @@ else
             <div class="table-container">
                 <table class="data-table">
                     <thead>
-                        <tr><th>ID</th><th>License Key</th><th>Program</th><th>Customer</th><th>Company</th><th>Assigned</th><th>Actions</th></tr>
+                        <tr><th>ID</th><th>License Key</th><th>Program</th><th>Customer</th><th>Company</th><th>Permission</th><th>Assigned</th><th>Actions</th></tr>
                     </thead>
                     <tbody>
                         @foreach (var m in paginatedMembers)
@@ -67,6 +67,7 @@ else
                                 <td><span class="badge-program">@(m.License?.Program?.Name ?? "-")</span></td>
                                 <td class="name-cell">@(m.Customer?.FirstName) @(m.Customer?.LastName)</td>
                                 <td>@(m.Customer?.Company?.Name ?? "-")</td>
+                                <td><span class="badge-permission badge-permission-@GetPermissionLevel(m.Permission)">@GetPermissionLabel(m.Permission)</span></td>
                                 <td>@m.AssignedAt.ToString("yyyy-MM-dd")</td>
                                 <td>
                                     <button class="btn-edit" @onclick="() => OpenEdit(m)">✏️ Edit</button>
@@ -145,6 +146,15 @@ else
                     <div class="form-group">
                         <label>Assigned Date</label>
                         <InputDate class="form-control" @bind-Value="form.AssignedAt" />
+                    </div>
+
+                    <div class="form-group">
+                        <label>Permission</label>
+                        <InputSelect class="form-control" @bind-Value="form.Permission">
+                            <option value="1">Owner</option>
+                            <option value="2">Admin</option>
+                            <option value="3">Member</option>
+                        </InputSelect>
                     </div>
 
                     @if (!string.IsNullOrEmpty(formError))
@@ -259,7 +269,7 @@ else
     private void OpenEdit(LicenseMember m)
     {
         editingId = m.Id;
-        form = new MemberForm { LicenseId = m.LicenseId, CustomerId = m.CustomerId, AssignedAt = m.AssignedAt };
+        form = new MemberForm { LicenseId = m.LicenseId, CustomerId = m.CustomerId, AssignedAt = m.AssignedAt, Permission = m.Permission };
         isEditing = true; formError = null; successMessage = null; showForm = true;
     }
 
@@ -277,7 +287,7 @@ else
                 var e = DbContext.LicenseMembers.Find(editingId);
                 if (e == null) { formError = "Record not found."; return; }
                 var license = DbContext.Licenses.Find(form.LicenseId);
-                e.LicenseId = form.LicenseId; e.CustomerId = form.CustomerId; e.OwnerId = license?.OwnerId; e.AssignedAt = form.AssignedAt;
+                e.LicenseId = form.LicenseId; e.CustomerId = form.CustomerId; e.OwnerId = license?.OwnerId; e.AssignedAt = form.AssignedAt; e.Permission = form.Permission;
                 e.UpdatedAt = DateTime.Now;
                 DbContext.LicenseMembers.Update(e);
                 successMessage = "Assignment updated.";
@@ -287,7 +297,7 @@ else
                 var exists = DbContext.LicenseMembers.Any(m => m.LicenseId == form.LicenseId && m.CustomerId == form.CustomerId);
                 if (exists) { formError = "This customer is already assigned to that license."; return; }
                 var license = DbContext.Licenses.Find(form.LicenseId);
-                DbContext.LicenseMembers.Add(new LicenseMember { LicenseId = form.LicenseId, CustomerId = form.CustomerId, OwnerId = license?.OwnerId, AssignedAt = form.AssignedAt });
+                DbContext.LicenseMembers.Add(new LicenseMember { LicenseId = form.LicenseId, CustomerId = form.CustomerId, OwnerId = license?.OwnerId, AssignedAt = form.AssignedAt, Permission = form.Permission });
                 successMessage = "Member assigned successfully.";
             }
             DbContext.SaveChanges();
@@ -316,7 +326,24 @@ else
         public int      LicenseId  { get; set; }
         public int      CustomerId { get; set; }
         public DateTime AssignedAt { get; set; } = DateTime.Today;
+        public int      Permission { get; set; } = 3; // Default: Member
     }
+
+    private string GetPermissionLabel(int permission) => permission switch
+    {
+        1 => "Owner",
+        2 => "Admin",
+        3 => "Member",
+        _ => "Unknown"
+    };
+
+    private string GetPermissionLevel(int permission) => permission switch
+    {
+        1 => "owner",
+        2 => "admin",
+        3 => "member",
+        _ => "member"
+    };
 }
 
 <style>
@@ -347,6 +374,10 @@ else
     .key-cell { font-family: monospace; font-size: .82rem; color: #444; }
     .name-cell { font-weight: 600; color: #333; }
     .badge-program { background: #eef2ff; color: #667eea; padding: .2rem .65rem; border-radius: 10px; font-size: .78rem; font-weight: 600; }
+    .badge-permission { padding: .2rem .65rem; border-radius: 10px; font-size: .78rem; font-weight: 600; }
+    .badge-permission-owner { background: #fff3cd; color: #856404; }
+    .badge-permission-admin { background: #d1ecf1; color: #0c5460; }
+    .badge-permission-member { background: #d4edda; color: #155724; }
     .btn-edit { background: #fff3cd; color: #856404; border: 1px solid #ffc107; padding: .3rem .65rem; border-radius: 4px; cursor: pointer; font-size: .8rem; margin-right: .3rem; }
     .btn-edit:hover { background: #ffc107; color: #fff; }
     .btn-delete { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; padding: .3rem .65rem; border-radius: 4px; cursor: pointer; font-size: .8rem; }

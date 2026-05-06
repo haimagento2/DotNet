@@ -265,7 +265,12 @@ else
                                                 <span class="member-company">Company: @(m.Customer?.Company?.Name ?? "—")</span>
                                                 <span class="member-company">Group: @(m.Customer?.CustomerGroup?.Name ?? "—")</span>
                                             </div>
-                                            <div class="member-meta">
+                                            <div class="member-controls">
+                                                <select class="permission-select" @onchange="@((ChangeEventArgs e) => UpdateMemberPermission(m, ParsePermission(e.Value)))">
+                                                    <option value="1" selected="@(m.Permission == 1)">Owner</option>
+                                                    <option value="2" selected="@(m.Permission == 2)">Admin</option>
+                                                    <option value="3" selected="@(m.Permission == 3)">Member</option>
+                                                </select>
                                                 <span class="member-date">@m.AssignedAt.ToString("yyyy-MM-dd")</span>
                                                 <button type="button" class="btn-remove" @onclick="() => RemoveMember(m)" title="Remove">✕</button>
                                             </div>
@@ -507,7 +512,7 @@ else
             foreach (var cid in selectedCustomerIds)
             {
                 if (!DbContext.LicenseMembers.Any(m => m.LicenseId == editingLicenseId && m.CustomerId == cid))
-                    DbContext.LicenseMembers.Add(new LicenseMember { LicenseId = editingLicenseId, CustomerId = cid, OwnerId = license?.OwnerId, AssignedAt = DateTime.Today });
+                    DbContext.LicenseMembers.Add(new LicenseMember { LicenseId = editingLicenseId, CustomerId = cid, OwnerId = license?.OwnerId, AssignedAt = DateTime.Today, Permission = 3 });
             }
             DbContext.SaveChanges();
             editingMembers = DbContext.LicenseMembers
@@ -532,6 +537,27 @@ else
             await Load();
         }
         catch (Exception ex) { memberError = $"Error: {ex.Message}"; }
+    }
+
+    private void UpdateMemberPermission(LicenseMember m, int permission)
+    {
+        m.Permission = permission;
+        var entity = DbContext.LicenseMembers.Find(m.Id);
+        if (entity != null)
+        {
+            entity.Permission = permission;
+            DbContext.LicenseMembers.Update(entity);
+            DbContext.SaveChanges();
+        }
+    }
+
+    private int ParsePermission(object? value)
+    {
+        if (value != null && int.TryParse(value.ToString(), out int permission))
+        {
+            return permission;
+        }
+        return 3; // Default to Member
     }
 
     private async Task Save()
@@ -563,6 +589,24 @@ else
             {
                 var e = new License { LicenseKey = form.LicenseKey, ProgramId = form.ProgramId, CompanyId = form.CompanyId, CustomerGroupId = form.CustomerGroupId, OwnerId = form.OwnerId == 0 ? null : form.OwnerId, SubLicenseType = form.SubLicenseType, StartDate = form.StartDate, ExpiryDate = form.ExpiryDate, MaxMembers = form.MaxMembers, Status = form.Status, CreatedAt = DateTime.Now };
                 DbContext.Licenses.Add(e);
+                DbContext.SaveChanges(); // Save first to get the ID
+
+                // Automatically add the owner as a LicenseMember with Owner permission
+                if (e.OwnerId.HasValue)
+                {
+                    var ownerMember = new LicenseMember
+                    {
+                        LicenseId = e.Id,
+                        CustomerId = e.OwnerId.Value,
+                        OwnerId = e.OwnerId.Value,
+                        Permission = 1, // Owner
+                        AssignedAt = DateTime.Today,
+                        CreatedAt = DateTime.Now
+                    };
+                    DbContext.LicenseMembers.Add(ownerMember);
+                    DbContext.SaveChanges();
+                }
+
                 successMessage = $"License '{e.LicenseKey}' added.";
             }
             DbContext.SaveChanges();
@@ -655,6 +699,9 @@ else
     .member-name { font-weight: 600; color: #333; font-size: .88rem; }
     .member-company { color: #999; font-size: .76rem; }
     .member-meta { display: flex; align-items: center; gap: .6rem; }
+    .member-controls { display: flex; align-items: center; gap: .6rem; }
+    .permission-select { padding: .3rem .5rem; border: 1px solid #d0d0d0; border-radius: 4px; font-size: .8rem; background: white; cursor: pointer; }
+    .permission-select:focus { outline: none; border-color: #667eea; }
     .member-date { color: #bbb; font-size: .76rem; white-space: nowrap; }
     .btn-remove { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; width: 22px; height: 22px; border-radius: 50%; cursor: pointer; font-size: .7rem; line-height: 1; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
     .btn-remove:hover { background: #dc3545; color: white; border-color: #dc3545; }

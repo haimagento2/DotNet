@@ -38,6 +38,10 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9Db3VudGVyLnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
 
+[/home/hai/Documents/DotNet/BlazorWebApp/Components/Pages/CustomerAdd.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9DdXN0b21lckFkZC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
 [/home/hai/Documents/DotNet/BlazorWebApp/Components/Pages/CustomerEdit.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9DdXN0b21lckVkaXQucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 

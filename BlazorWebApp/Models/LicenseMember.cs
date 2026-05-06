@@ -6,6 +6,7 @@ namespace BlazorWebApp.Models
         public int LicenseId { get; set; }
         public int CustomerId { get; set; }
         public int? OwnerId { get; set; }
+        public int Permission { get; set; } = 3; // 1=Owner, 2=Admin, 3=Member
         public DateTime AssignedAt { get; set; } = DateTime.Now;
         public DateTime CreatedAt { get; set; } = DateTime.Now;
         public DateTime? UpdatedAt { get; set; }
