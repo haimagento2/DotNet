@@ -98,7 +98,84 @@ else
 
                 <!-- License Section -->
                 <div class="license-section">
-                    <h3>Licenses</h3>
+                    <div class="license-header">
+                        <h3>Licenses</h3>
+                        <button class="btn btn-primary" @onclick="ShowAddLicenseForm">+ Add New License</button>
+                    </div>
+                    @if (showAddLicenseForm)
+                    {
+                        <div class="add-license-form">
+                            <EditForm Model="licenseForm" OnValidSubmit="SaveNewLicense" Context="licenseContext">
+                                <DataAnnotationsValidator />
+
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>License Key *</label>
+                                        <InputNumber class="form-control" @bind-Value="licenseForm.LicenseKey" placeholder="e.g. 12345" />
+                                        <ValidationMessage For="@(() => licenseForm.LicenseKey)" />
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Program *</label>
+                                        <InputSelect class="form-control" @bind-Value="licenseForm.ProgramId">
+                                            <option value="0">— Select Program —</option>
+                                            @foreach (var p in programs)
+                                            {
+                                                <option value="@p.Id">@p.Name (v@p.Version)</option>
+                                            }
+                                        </InputSelect>
+                                        <ValidationMessage For="@(() => licenseForm.ProgramId)" />
+                                    </div>
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Sub License Type *</label>
+                                        <InputSelect class="form-control" @bind-Value="licenseForm.SubLicenseType">
+                                            <option value="@LicenseType.TeamSize">Team size</option>
+                                            <option value="@LicenseType.QtyPurchase">Qty purchase</option>
+                                            <option value="@LicenseType.Seminar">Seminar</option>
+                                        </InputSelect>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Max Members</label>
+                                        <InputNumber class="form-control" @bind-Value="licenseForm.MaxMembers" />
+                                    </div>
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Start Date *</label>
+                                        <InputDate class="form-control" @bind-Value="licenseForm.StartDate" />
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Expiry Date *</label>
+                                        <InputDate class="form-control" @bind-Value="licenseForm.ExpiryDate" />
+                                    </div>
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Status</label>
+                                        <InputSelect class="form-control" @bind-Value="licenseForm.Status">
+                                            <option value="Active">Active</option>
+                                            <option value="Expired">Expired</option>
+                                            <option value="Suspended">Suspended</option>
+                                        </InputSelect>
+                                    </div>
+                                </div>
+
+                                @if (!string.IsNullOrEmpty(licenseFormError))
+                                {
+                                    <div class="alert alert-danger">@licenseFormError</div>
+                                }
+
+                                <div class="form-actions">
+                                    <button type="button" class="btn btn-secondary" @onclick="HideAddLicenseForm">Cancel</button>
+                                    <button type="submit" class="btn btn-primary" disabled="@isSavingLicense">Add License</button>
+                                </div>
+                            </EditForm>
+                        </div>
+                    }
                     @if (customerLicenses.Count == 0)
                     {
                         <p class="no-licenses">No licenses assigned</p>
@@ -167,6 +244,13 @@ else
     private string? formError;
     private CustomerFormModel formModel = new();
 
+    // License form
+    private bool showAddLicenseForm;
+    private List<AppProgram> programs = new();
+    private bool isSavingLicense;
+    private string? licenseFormError;
+    private LicenseFormModel licenseForm = new();
+
     protected override async Task OnInitializedAsync()
     {
         if (!AuthService.IsAuthenticated()) { Navigation.NavigateTo("/login"); return; }
@@ -187,6 +271,7 @@ else
 
         companies = DbContext.Companies.OrderBy(c => c.Name).ToList();
         groups = DbContext.CustomerGroups.OrderBy(g => g.Name).ToList();
+        programs = DbContext.Programs.OrderBy(p => p.Name).ToList();
 
         formModel = new CustomerFormModel
         {
@@ -295,6 +380,67 @@ else
         }
     }
 
+    private void ShowAddLicenseForm()
+    {
+        showAddLicenseForm = true;
+        licenseForm = new LicenseFormModel
+        {
+            OwnerId = customer!.Id,
+            StartDate = DateTime.Now,
+            ExpiryDate = DateTime.Now.AddYears(1),
+            MaxMembers = 5,
+            Status = "Active",
+            SubLicenseType = LicenseType.TeamSize
+        };
+    }
+
+    private void HideAddLicenseForm()
+    {
+        showAddLicenseForm = false;
+        licenseForm = new LicenseFormModel();
+        licenseFormError = null;
+    }
+
+    private async Task SaveNewLicense()
+    {
+        if (customer == null) return;
+
+        isSavingLicense = true;
+        licenseFormError = null;
+
+        try
+        {
+            var newLicense = new License
+            {
+                LicenseKey = licenseForm.LicenseKey,
+                ProgramId = licenseForm.ProgramId,
+                OwnerId = licenseForm.OwnerId,
+                SubLicenseType = licenseForm.SubLicenseType,
+                StartDate = licenseForm.StartDate,
+                ExpiryDate = licenseForm.ExpiryDate,
+                MaxMembers = licenseForm.MaxMembers,
+                Status = licenseForm.Status,
+                CreatedAt = DateTime.Now,
+                UpdatedAt = DateTime.Now
+            };
+
+            DbContext.Licenses.Add(newLicense);
+            DbContext.SaveChanges();
+
+            successMessage = $"License '{newLicense.LicenseKey}' added successfully.";
+            LoadCustomerLicenses();
+            HideAddLicenseForm();
+        }
+        catch (Exception ex)
+        {
+            licenseFormError = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isSavingLicense = false;
+        }
+    }
+
     private sealed class CustomerFormModel
     {
         [System.ComponentModel.DataAnnotations.Required]
@@ -311,6 +457,28 @@ else
         public string? City { get; set; }
         public int? CompanyId { get; set; }
         public int? CustomerGroupId { get; set; }
+    }
+
+    private sealed class LicenseFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        public int LicenseKey { get; set; }
+
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.Range(1, int.MaxValue, ErrorMessage = "Please select a program.")]
+        public int ProgramId { get; set; }
+
+        public int OwnerId { get; set; }
+        public LicenseType SubLicenseType { get; set; } = LicenseType.TeamSize;
+
+        [System.ComponentModel.DataAnnotations.Required]
+        public DateTime StartDate { get; set; }
+
+        [System.ComponentModel.DataAnnotations.Required]
+        public DateTime ExpiryDate { get; set; }
+
+        public int MaxMembers { get; set; } = 5;
+        public string Status { get; set; } = "Active";
     }
 
     private class CustomerLicenseInfo
@@ -360,4 +528,12 @@ else
     .role-badge[data-role="Owner"] { background: #fff3cd; color: #856404; }
     .role-badge[data-role="Admin"] { background: #d1ecf1; color: #0c5460; }
     .role-badge[data-role="Member"] { background: #d4edda; color: #155724; }
+
+    /* Add License Form Styles */
+    .license-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .license-header h3 { margin: 0; }
+    .add-license-form { background: #f9f9f9; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem; border: 1px solid #e0e0e0; }
+    .add-license-form .form-row { margin-bottom: 1rem; }
+    .add-license-form .form-group { margin-bottom: 1rem; }
+    .add-license-form .form-actions { display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem; }
 </style>

@@ -26,6 +26,29 @@ else
             </div>
         </div>
 
+        <div class="search-filters">
+            <div class="search-group">
+                <input type="text" class="form-control search-input" placeholder="Search by name or email..." @bind="searchQuery" @bind:event="oninput" @bind:after="Search" />
+            </div>
+            <div class="filters-group">
+                <select class="form-control filter-select" @bind="filterCompanyId" @bind:after="ApplyCustomerFilters">
+                    <option value="">All Companies</option>
+                    @foreach (var c in companies)
+                    {
+                        <option value="@c.Id">@c.Name</option>
+                    }
+                </select>
+                <select class="form-control filter-select" @bind="filterGroupId" @bind:after="ApplyCustomerFilters">
+                    <option value="">All Groups</option>
+                    @foreach (var g in groups)
+                    {
+                        <option value="@g.Id">@g.Name</option>
+                    }
+                </select>
+                <button class="btn btn-secondary" @onclick="ClearFilters">Clear Filters</button>
+            </div>
+        </div>
+
         @if (customers == null)
         {
             <div class="loading">
@@ -100,6 +123,11 @@ else
     private List<Company> companies = new();
     private List<CustomerGroup> groups = new();
 
+    // Search and filters
+    private string searchQuery = string.Empty;
+    private int? filterCompanyId;
+    private int? filterGroupId;
+
     private int currentPage = 1;
     private const int PageSize = 20;
     private int totalPages => (int)Math.Ceiling((customers?.Count ?? 0) / (double)PageSize);
@@ -109,23 +137,66 @@ else
     protected override async Task OnInitializedAsync()
     {
         if (!AuthService.IsAuthenticated()) { Navigation.NavigateTo("/login"); return; }
-        await LoadAll();
+        LoadAll();
     }
 
-    private async Task LoadAll()
+    private void LoadAll()
     {
-        customers = DbContext.Customers
+        var query = DbContext.Customers
             .Include(c => c.Company)
             .Include(c => c.CustomerGroup)
-            .OrderBy(c => c.Id)
-            .ToList();
+            .AsQueryable();
+
+        // Apply search
+        if (!string.IsNullOrWhiteSpace(searchQuery))
+        {
+            var lowerSearch = searchQuery.Trim().ToLower();
+            query = query.Where(c => c.FirstName.ToLower().Contains(lowerSearch) ||
+                                     c.LastName.ToLower().Contains(lowerSearch) ||
+                                     c.Email.ToLower().Contains(lowerSearch));
+        }
+
+        // Apply filters
+        if (filterCompanyId.HasValue)
+        {
+            query = query.Where(c => c.CompanyId == filterCompanyId.Value);
+        }
+        if (filterGroupId.HasValue)
+        {
+            query = query.Where(c => c.CustomerGroupId == filterGroupId.Value);
+        }
+
+        customers = query.OrderBy(c => c.Id).ToList();
 
         companies = DbContext.Companies.OrderBy(c => c.Name).ToList();
         groups    = DbContext.CustomerGroups.OrderBy(g => g.Name).ToList();
         currentPage = 1;
     }
 
-    private async Task RefreshData() { await LoadAll(); StateHasChanged(); }
+    private Task RefreshData() { LoadAll(); StateHasChanged(); return Task.CompletedTask; }
+
+    private void Search()
+    {
+        LoadAll();
+        StateHasChanged();
+    }
+
+    private void ApplyCustomerFilters()
+    {
+        currentPage = 1;
+        LoadAll();
+        StateHasChanged();
+    }
+
+    private async Task ClearFilters()
+    {
+        searchQuery = string.Empty;
+        filterCompanyId = null;
+        filterGroupId = null;
+        currentPage = 1;
+        LoadAll();
+        StateHasChanged();
+    }
 
     private void AddNewCustomer()
     {
@@ -159,6 +230,15 @@ else
     .page-header h1 { margin: 0; color: #333; font-size: 2rem; }
 
     .header-actions { display: flex; gap: .75rem; }
+
+    .search-filters {
+        background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1);
+        margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;
+    }
+    .search-group { flex: 1; min-width: 200px; }
+    .search-input { width: 100%; padding: .6rem .85rem; border: 1px solid #d0d0d0; border-radius: 5px; font-size: .9rem; }
+    .filters-group { display: flex; gap: .75rem; align-items: center; }
+    .filter-select { padding: .6rem .85rem; border: 1px solid #d0d0d0; border-radius: 5px; font-size: .9rem; min-width: 150px; }
 
     .btn {
         border: none; padding: .65rem 1.25rem; border-radius: 4px;

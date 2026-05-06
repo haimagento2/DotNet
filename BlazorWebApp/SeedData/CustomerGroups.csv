@@ -1,0 +1,6 @@
+Id,Name,Description,CreatedAt,UpdatedAt
+1,VIP,"Premium clients with dedicated support",2024-06-01,
+2,Enterprise,"Large enterprise accounts",2024-06-01,
+3,SMB,"Small and medium-sized businesses",2024-06-01,
+4,Retail,"Individual retail customers",2024-06-01,
+5,Partner,"Strategic business partners and resellers",2024-06-01,

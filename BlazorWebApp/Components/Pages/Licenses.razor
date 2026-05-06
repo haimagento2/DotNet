@@ -45,6 +45,46 @@ else
                 </div>
             </div>
 
+            <div class="filters-section">
+                <div class="filters-group">
+                    <input type="text" class="form-control filter-select" placeholder="Search license key / owner / program..." @bind="licenseSearch" @bind:event="oninput" @bind:after="ApplyLicenseFilters" />
+                    <select class="form-control filter-select" @bind="filterProgramId" @bind:after="ApplyLicenseFilters">
+                        <option value="0">All Programs</option>
+                        @foreach (var p in programs)
+                        {
+                            <option value="@p.Id">@p.Name</option>
+                        }
+                    </select>
+                    <select class="form-control filter-select" @bind="filterCompanyId" @bind:after="ApplyLicenseFilters">
+                        <option value="">All Companies</option>
+                        @foreach (var c in companies)
+                        {
+                            <option value="@c.Id">@c.Name</option>
+                        }
+                    </select>
+                    <select class="form-control filter-select" @bind="filterGroupId" @bind:after="ApplyLicenseFilters">
+                        <option value="">All Groups</option>
+                        @foreach (var g in customerGroups)
+                        {
+                            <option value="@g.Id">@g.Name</option>
+                        }
+                    </select>
+                    <select class="form-control filter-select" @bind="filterType" @bind:after="ApplyLicenseFilters">
+                        <option value="">All Types</option>
+                        <option value="1">Team size</option>
+                        <option value="2">Qty purchase</option>
+                        <option value="3">Seminar</option>
+                    </select>
+                    <select class="form-control filter-select" @bind="filterStatus" @bind:after="ApplyLicenseFilters">
+                        <option value="">All Statuses</option>
+                        <option value="Active">Active</option>
+                        <option value="Expired">Expired</option>
+                        <option value="Suspended">Suspended</option>
+                    </select>
+                    <button class="btn btn-secondary" @onclick="ClearFilters">Clear Filters</button>
+                </div>
+            </div>
+
         @if (!string.IsNullOrEmpty(successMessage))
         {
             <div class="alert alert-success">@successMessage</div>
@@ -367,10 +407,18 @@ else
     private LicenseForm form = new();
     private int editingLicenseId;
     private string customerSearch = string.Empty;
+    private string licenseSearch = string.Empty;
     private HashSet<int> selectedCustomerIds = new();
     private int currentPage = 1;
     private int pageSize = 20;
     private int totalRecords = 0;
+
+    // Filters
+    private int filterProgramId;
+    private int? filterCompanyId;
+    private int? filterGroupId;
+    private int? filterType;
+    private string? filterStatus;
 
     private int totalPages => (int)Math.Ceiling((double)totalRecords / pageSize);
     private bool hasPreviousPage => currentPage > 1;
@@ -381,7 +429,7 @@ else
         if (page >= 1 && page <= totalPages)
         {
             currentPage = page;
-            await Load();
+            Load();
         }
     }
 
@@ -390,7 +438,7 @@ else
         if (hasPreviousPage)
         {
             currentPage--;
-            await Load();
+            Load();
         }
     }
 
@@ -399,7 +447,7 @@ else
         if (hasNextPage)
         {
             currentPage++;
-            await Load();
+            Load();
         }
     }
     private IEnumerable<Customer> availableCustomers => allCustomers
@@ -430,10 +478,10 @@ else
     protected override async Task OnInitializedAsync()
     {
         if (!AuthService.IsAuthenticated()) { Navigation.NavigateTo("/login"); return; }
-        await Load();
+        Load();
     }
 
-    private async Task Load()
+    private void Load()
     {
         var query = DbContext.Licenses
             .Include(l => l.Program)
@@ -443,7 +491,50 @@ else
                 .ThenInclude(o => o!.Company)
             .Include(l => l.Owner)
                 .ThenInclude(o => o!.CustomerGroup)
-            .Include(l => l.Members);
+            .Include(l => l.Members)
+            .AsQueryable();
+
+        // Apply filters
+        if (!string.IsNullOrWhiteSpace(licenseSearch))
+        {
+            var lowerSearch = licenseSearch.Trim().ToLower();
+            if (int.TryParse(lowerSearch, out var licenseKeySearch))
+            {
+                query = query.Where(l => l.LicenseKey == licenseKeySearch ||
+                                         l.Program!.Name!.ToLower().Contains(lowerSearch) ||
+                                         (l.Owner != null && (l.Owner.FirstName.ToLower().Contains(lowerSearch) ||
+                                                              l.Owner.LastName.ToLower().Contains(lowerSearch) ||
+                                                              l.Owner.Email.ToLower().Contains(lowerSearch))));
+            }
+            else
+            {
+                query = query.Where(l => l.Program!.Name!.ToLower().Contains(lowerSearch) ||
+                                         (l.Owner != null && (l.Owner.FirstName.ToLower().Contains(lowerSearch) ||
+                                                              l.Owner.LastName.ToLower().Contains(lowerSearch) ||
+                                                              l.Owner.Email.ToLower().Contains(lowerSearch))));
+            }
+        }
+
+        if (filterProgramId > 0)
+        {
+            query = query.Where(l => l.ProgramId == filterProgramId);
+        }
+        if (filterCompanyId.HasValue)
+        {
+            query = query.Where(l => l.CompanyId == filterCompanyId.Value);
+        }
+        if (filterGroupId.HasValue)
+        {
+            query = query.Where(l => l.CustomerGroupId == filterGroupId.Value);
+        }
+        if (filterType.HasValue)
+        {
+            query = query.Where(l => (int)l.SubLicenseType == filterType.Value);
+        }
+        if (!string.IsNullOrEmpty(filterStatus))
+        {
+            query = query.Where(l => l.Status == filterStatus);
+        }
 
         totalRecords = query.Count();
         licenses = query
@@ -469,7 +560,27 @@ else
         owners = DbContext.Customers.Include(c => c.Company).Include(c => c.CustomerGroup).OrderBy(c => c.Id).ToList();
     }
 
-    private async Task RefreshData() { currentPage = 1; await Load(); successMessage = null; StateHasChanged(); }
+    private Task RefreshData() { currentPage = 1; Load(); successMessage = null; StateHasChanged(); return Task.CompletedTask; }
+
+    private async Task ClearFilters()
+    {
+        licenseSearch = string.Empty;
+        filterProgramId = 0;
+        filterCompanyId = null;
+        filterGroupId = null;
+        filterType = null;
+        filterStatus = null;
+        currentPage = 1;
+        Load();
+        StateHasChanged();
+    }
+
+    private void ApplyLicenseFilters()
+    {
+        currentPage = 1;
+        Load();
+        StateHasChanged();
+    }
 
     private void OpenAdd()
     {
@@ -519,7 +630,7 @@ else
                 .Include(m => m.Customer).ThenInclude(c => c!.Company)
                 .Where(m => m.LicenseId == editingLicenseId).ToList();
             selectedCustomerIds = new();
-            await Load();
+            Load();
         }
         catch (Exception ex) { memberError = $"Error: {ex.Message}"; }
     }
@@ -534,7 +645,7 @@ else
             editingMembers = DbContext.LicenseMembers
                 .Include(em => em.Customer).ThenInclude(c => c!.Company)
                 .Where(em => em.LicenseId == editingLicenseId).ToList();
-            await Load();
+            Load();
         }
         catch (Exception ex) { memberError = $"Error: {ex.Message}"; }
     }
@@ -610,7 +721,7 @@ else
                 successMessage = $"License '{e.LicenseKey}' added.";
             }
             DbContext.SaveChanges();
-            await Load();
+            Load();
             showForm = false;
         }
         catch (Exception ex) { formError = $"Error: {ex.Message}"; }
@@ -637,6 +748,9 @@ else
     .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1); }
     .page-header h1 { margin: 0; color: #333; font-size: 2rem; }
     .header-actions { display: flex; gap: .75rem; align-items: center; position: relative; }
+    .filters-section { background: white; padding: 1rem 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1); margin-bottom: 1.5rem; }
+    .filters-group { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; }
+    .filter-select { padding: .6rem .85rem; border: 1px solid #d0d0d0; border-radius: 5px; font-size: .9rem; min-width: 140px; }
     .columns-toggle { position: relative; }
     .columns-dropdown { position: absolute; right: 0; top: calc(100% + .5rem); background: white; border: 1px solid #d0d0d0; border-radius: 8px; box-shadow: 0 8px 20px rgba(0,0,0,.12); padding: .75rem; display: grid; gap: .5rem; min-width: 180px; z-index: 10; }
     .columns-dropdown label { display: flex; align-items: center; gap: .5rem; font-size: .88rem; color: #333; cursor: pointer; }

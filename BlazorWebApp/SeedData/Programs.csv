@@ -1,0 +1,6 @@
+Id,Name,Description,Version,Price,CreatedAt,UpdatedAt
+1,BasicCRM,"Essential CRM tools for small teams",1.0,99.99,2023-01-01,
+2,ProCRM,"Advanced CRM with analytics and automation",2.0,299.99,2023-03-01,
+3,EnterpriseCRM,"Full-scale enterprise CRM suite",3.0,999.99,2023-06-01,
+4,DataAnalytics,"Business intelligence and reporting module",1.5,199.99,2023-09-01,
+5,SecurityPro,"Security compliance and audit management",2.1,149.99,2024-01-01,
