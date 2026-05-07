@@ -1,20 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "/home/hai/Documents/DotNet/BlazorWebApp/BlazorWebApp.csproj": {}
+    "/home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/BlazorWebApp.csproj": {}
   },
   "projects": {
-    "/home/hai/Documents/DotNet/BlazorWebApp/BlazorWebApp.csproj": {
+    "/home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/BlazorWebApp.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/home/hai/Documents/DotNet/BlazorWebApp/BlazorWebApp.csproj",
+        "projectUniqueName": "/home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/BlazorWebApp.csproj",
         "projectName": "BlazorWebApp",
-        "projectPath": "/home/hai/Documents/DotNet/BlazorWebApp/BlazorWebApp.csproj",
-        "packagesPath": "/home/hai/.nuget/packages/",
-        "outputPath": "/home/hai/Documents/DotNet/BlazorWebApp/obj/",
+        "projectPath": "/home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/BlazorWebApp.csproj",
+        "packagesPath": "/home/hainv4@smartosc.com/.nuget/packages/",
+        "outputPath": "/home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "/home/hai/.nuget/NuGet/NuGet.Config"
+          "/home/hainv4@smartosc.com/.nuget/NuGet/NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net10.0"

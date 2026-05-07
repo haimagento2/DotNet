@@ -46,8 +46,7 @@ else
             </div>
 
             <div class="filters-section">
-                <div class="filters-group">
-                    <input type="text" class="form-control filter-select" placeholder="Search license key / owner / program..." @bind="licenseSearch" @bind:event="oninput" @bind:after="ApplyLicenseFilters" />
+                <div class="filters-row">
                     <select class="form-control filter-select" @bind="filterProgramId" @bind:after="ApplyLicenseFilters">
                         <option value="0">All Programs</option>
                         @foreach (var p in programs)
@@ -69,6 +68,15 @@ else
                             <option value="@g.Id">@g.Name</option>
                         }
                     </select>
+                    <select class="form-control filter-select" @bind="filterCustomerId" @bind:after="ApplyLicenseFilters">
+                        <option value="">All Customers</option>
+                        @foreach (var c in owners)
+                        {
+                            <option value="@c.Id">@c.FirstName @c.LastName</option>
+                        }
+                    </select>
+                </div>
+                <div class="filters-row">
                     <select class="form-control filter-select" @bind="filterType" @bind:after="ApplyLicenseFilters">
                         <option value="">All Types</option>
                         <option value="1">Team size</option>
@@ -417,6 +425,7 @@ else
     private int filterProgramId;
     private int? filterCompanyId;
     private int? filterGroupId;
+    private int? filterCustomerId;
     private int? filterType;
     private string? filterStatus;
 
@@ -527,6 +536,10 @@ else
         {
             query = query.Where(l => l.CustomerGroupId == filterGroupId.Value);
         }
+        if (filterCustomerId.HasValue)
+        {
+            query = query.Where(l => l.OwnerId == filterCustomerId.Value);
+        }
         if (filterType.HasValue)
         {
             query = query.Where(l => (int)l.SubLicenseType == filterType.Value);
@@ -568,6 +581,7 @@ else
         filterProgramId = 0;
         filterCompanyId = null;
         filterGroupId = null;
+        filterCustomerId = null;
         filterType = null;
         filterStatus = null;
         currentPage = 1;
@@ -749,7 +763,8 @@ else
     .page-header h1 { margin: 0; color: #333; font-size: 2rem; }
     .header-actions { display: flex; gap: .75rem; align-items: center; position: relative; }
     .filters-section { background: white; padding: 1rem 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1); margin-bottom: 1.5rem; }
-    .filters-group { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; }
+    .filters-row { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; margin-bottom: 0.5rem; }
+    .filters-row:last-child { margin-bottom: 0; }
     .filter-select { padding: .6rem .85rem; border: 1px solid #d0d0d0; border-radius: 5px; font-size: .9rem; min-width: 140px; }
     .columns-toggle { position: relative; }
     .columns-dropdown { position: absolute; right: 0; top: calc(100% + .5rem); background: white; border: 1px solid #d0d0d0; border-radius: 8px; box-shadow: 0 8px 20px rgba(0,0,0,.12); padding: .75rem; display: grid; gap: .5rem; min-width: 180px; z-index: 10; }
