@@ -359,8 +359,8 @@ else
             customer.FirstName = formModel.FirstName;
             customer.LastName = formModel.LastName;
             customer.Email = formModel.Email;
-            customer.Phone = formModel.Phone;
-            customer.City = formModel.City;
+            customer.Phone = formModel.Phone ?? string.Empty;
+            customer.City = formModel.City ?? string.Empty;
             customer.CompanyId = formModel.CompanyId;
             customer.CustomerGroupId = formModel.CustomerGroupId;
             customer.UpdatedAt = DateTime.Now;
@@ -372,7 +372,9 @@ else
         }
         catch (Exception ex)
         {
-            formError = $"Error: {ex.Message}";
+            formError = ex.InnerException is not null
+                ? $"Error: {ex.Message} - {ex.InnerException.Message}"
+                : $"Error: {ex.Message}";
         }
         finally
         {

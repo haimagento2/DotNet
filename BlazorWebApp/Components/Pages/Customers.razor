@@ -26,20 +26,25 @@ else
             </div>
         </div>
 
+        @if (!string.IsNullOrEmpty(successMessage))
+        {
+            <div class="alert alert-success">@successMessage</div>
+        }
+
         <div class="search-filters">
             <div class="search-group">
                 <input type="text" class="form-control search-input" placeholder="Search by name or email..." @bind="searchQuery" @bind:event="oninput" @bind:after="Search" />
             </div>
             <div class="filters-group">
                 <select class="form-control filter-select" @bind="filterCompanyId" @bind:after="ApplyCustomerFilters">
-                    <option value="">All Companies</option>
+                    <option value="">Select Option</option>
                     @foreach (var c in companies)
                     {
                         <option value="@c.Id">@c.Name</option>
                     }
                 </select>
                 <select class="form-control filter-select" @bind="filterGroupId" @bind:after="ApplyCustomerFilters">
-                    <option value="">All Groups</option>
+                    <option value="">Select Option</option>
                     @foreach (var g in groups)
                     {
                         <option value="@g.Id">@g.Name</option>
@@ -127,6 +132,7 @@ else
     private string searchQuery = string.Empty;
     private int? filterCompanyId;
     private int? filterGroupId;
+    private string? successMessage;
 
     private int currentPage = 1;
     private const int PageSize = 20;
@@ -173,7 +179,13 @@ else
         currentPage = 1;
     }
 
-    private Task RefreshData() { LoadAll(); StateHasChanged(); return Task.CompletedTask; }
+    private Task RefreshData()
+    {
+        LoadAll();
+        successMessage = "✓ Data refreshed from database";
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
 
     private void Search()
     {

@@ -183,7 +183,12 @@ else
         currentPage = 1;
     }
 
-    private async Task RefreshData() { await Load(); successMessage = null; StateHasChanged(); }
+    private async Task RefreshData()
+    {
+        await Load();
+        successMessage = "✓ Data refreshed from database";
+        StateHasChanged();
+    }
 
     private void OpenAdd()
     {

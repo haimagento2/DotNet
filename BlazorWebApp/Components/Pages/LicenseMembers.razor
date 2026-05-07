@@ -34,7 +34,7 @@ else
             <div class="filter-group">
                 <label>Filter by License</label>
                 <select class="form-control" @onchange="FilterChanged">
-                    <option value="0">All Licenses</option>
+                    <option value="0">Select Option</option>
                     @foreach (var lic in allLicenses)
                     {
                         <option value="@lic.Id">@lic.LicenseKey (@(lic.Program?.Name ?? "-"))</option>

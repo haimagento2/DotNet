@@ -140,8 +140,8 @@ else
                 FirstName = formModel.FirstName,
                 LastName = formModel.LastName,
                 Email = formModel.Email,
-                Phone = formModel.Phone,
-                City = formModel.City,
+                Phone = formModel.Phone ?? string.Empty,
+                City = formModel.City ?? string.Empty,
                 CompanyId = formModel.CompanyId,
                 CustomerGroupId = formModel.CustomerGroupId,
                 CreatedAt = DateTime.Now,
@@ -156,7 +156,9 @@ else
         }
         catch (Exception ex)
         {
-            formError = $"Error: {ex.Message}";
+            formError = ex.InnerException is not null
+                ? $"Error: {ex.Message} - {ex.InnerException.Message}"
+                : $"Error: {ex.Message}";
         }
         finally
         {
