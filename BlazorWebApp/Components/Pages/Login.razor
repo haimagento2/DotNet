@@ -1,5 +1,4 @@
 @page "/login"
-@inject AuthenticationService AuthService
 @inject NavigationManager Navigation
 
 <PageTitle>Admin Login</PageTitle>
@@ -8,30 +7,23 @@
     <div class="login-box">
         <h2 class="login-title">Admin Login</h2>
 
-        <EditForm Model="Input" OnValidSubmit="HandleLogin" FormName="LoginForm" method="post">
-            <DataAnnotationsValidator />
+        <div id="error-message" class="alert alert-danger" role="alert" style="display: none;">
+            Invalid username or password. Please try again.
+        </div>
 
+        <form method="post" action="/auth/login">
             <div class="form-group">
                 <label for="username">Username:</label>
-                <InputText id="username" class="form-control" @bind-Value="Input.Username" placeholder="Enter username" />
-                <ValidationMessage For="@(() => Input.Username)" />
+                <input type="text" id="username" name="username" class="form-control" placeholder="Enter username" required />
             </div>
 
             <div class="form-group">
                 <label for="password">Password:</label>
-                <InputText id="password" type="password" class="form-control" @bind-Value="Input.Password" placeholder="Enter password" />
-                <ValidationMessage For="@(() => Input.Password)" />
+                <input type="password" id="password" name="password" class="form-control" placeholder="Enter password" required />
             </div>
 
-            @if (!string.IsNullOrEmpty(errorMessage))
-            {
-                <div class="alert alert-danger" role="alert">
-                    @errorMessage
-                </div>
-            }
-
             <button type="submit" class="btn btn-primary w-100">Login</button>
-        </EditForm>
+        </form>
 
         <div class="mt-3 text-center">
             <p class="text-muted">Demo Credentials:</p>
@@ -41,41 +33,12 @@
     </div>
 </div>
 
-@code {
-    [SupplyParameterFromForm]
-    private LoginInput Input { get; set; } = default!;
-
-    private string? errorMessage;
-
-    protected override void OnInitialized() => Input ??= new();
-
-    private async Task HandleLogin()
-    {
-        errorMessage = null;
-        Input ??= new LoginInput();
-        try
-        {
-            bool success = await AuthService.LoginAsync(Input.Username, Input.Password);
-            if (success)
-                Navigation.NavigateTo("/dashboard", forceLoad: true);
-            else
-                errorMessage = "Invalid username or password. Please try again.";
-        }
-        catch (Exception ex)
-        {
-            errorMessage = $"An error occurred: {ex.Message}";
-        }
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('error') === 'invalid') {
+        document.getElementById('error-message').style.display = 'block';
     }
-
-    private sealed class LoginInput
-    {
-        [System.ComponentModel.DataAnnotations.Required]
-        public string Username { get; set; } = string.Empty;
-
-        [System.ComponentModel.DataAnnotations.Required]
-        public string Password { get; set; } = string.Empty;
-    }
-}
+</script>
 
 <style>
     .login-container {

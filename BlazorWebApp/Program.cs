@@ -12,6 +12,8 @@ var truncateLicenseData = args.Contains("--truncate-licenses", StringComparer.Or
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
+builder.Services.AddControllers();
+
 builder.Services.AddHttpContextAccessor();
 
 var databasePath = Path.Combine(builder.Environment.ContentRootPath, "BlazorWebApp.db");
@@ -98,6 +100,8 @@ app.MapGet("/logout", async (HttpContext ctx) =>
 });
 
 app.MapStaticAssets();
+app.MapControllers();
+
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 

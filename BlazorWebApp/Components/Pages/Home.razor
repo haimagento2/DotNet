@@ -44,7 +44,7 @@
 @code {
     private void NavigateToLogin()
     {
-        Navigation.NavigateTo("/login");
+        Navigation.NavigateTo("/login", forceLoad: true);
     }
 
     private void NavigateToDashboard()

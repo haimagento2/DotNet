@@ -56,7 +56,7 @@ else
             <div class="table-container">
                 <table class="data-table">
                     <thead>
-                        <tr><th>ID</th><th>License Key</th><th>Program</th><th>Customer</th><th>Company</th><th>Permission</th><th>Assigned</th><th>Actions</th></tr>
+                        <tr><th>ID</th><th>License Key</th><th>Program</th><th>Customer</th><th>Owner</th><th>Company</th><th>Permission</th><th>Assigned</th><th>Actions</th></tr>
                     </thead>
                     <tbody>
                         @foreach (var m in paginatedMembers)
@@ -66,6 +66,7 @@ else
                                 <td class="key-cell">@(m.License?.LicenseKey.ToString() ?? "-")</td>
                                 <td><span class="badge-program">@(m.License?.Program?.Name ?? "-")</span></td>
                                 <td class="name-cell">@(m.Customer?.FirstName) @(m.Customer?.LastName)</td>
+                                <td>@GetOwnerName(m)</td>
                                 <td>@(m.Customer?.Company?.Name ?? "-")</td>
                                 <td><span class="badge-permission badge-permission-@GetPermissionLevel(m.Permission)">@GetPermissionLabel(m.Permission)</span></td>
                                 <td>@m.AssignedAt.ToString("yyyy-MM-dd")</td>
@@ -237,7 +238,9 @@ else
         members = DbContext.LicenseMembers
             .Include(m => m.License).ThenInclude(l => l!.Program)
             .Include(m => m.License).ThenInclude(l => l!.Company)
+            .Include(m => m.License).ThenInclude(l => l!.Owner)
             .Include(m => m.Customer).ThenInclude(c => c!.Company)
+            .Include(m => m.Owner)
             .OrderBy(m => m.LicenseId).ThenBy(m => m.Id)
             .ToList();
 
@@ -344,6 +347,21 @@ else
         3 => "member",
         _ => "member"
     };
+
+    private string GetOwnerName(LicenseMember m)
+    {
+        if (m.Owner is not null)
+        {
+            return $"{m.Owner.FirstName} {m.Owner.LastName}";
+        }
+
+        if (m.License?.Owner is not null)
+        {
+            return $"{m.License.Owner.FirstName} {m.License.Owner.LastName}";
+        }
+
+        return "-";
+    }
 }
 
 <style>

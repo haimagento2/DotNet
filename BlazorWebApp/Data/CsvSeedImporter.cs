@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Linq;
 using BlazorWebApp.Models;
 
 namespace BlazorWebApp.Data
@@ -46,6 +47,7 @@ namespace BlazorWebApp.Data
             {
                 dbContext.LicenseMembers.AddRange(ReadLicenseMembers(Path.Combine(seedFolder, "LicenseMembers.csv")));
                 dbContext.SaveChanges();
+                EnsureLicenseOwnerMembers(dbContext);
             }
 
             if (force || !dbContext.Admins.Any())
@@ -136,6 +138,50 @@ namespace BlazorWebApp.Data
                 CreatedAt = ParseDateTime(row["CreatedAt"]),
                 UpdatedAt = ParseNullableDateTime(row["UpdatedAt"])
             });
+
+        private static void EnsureLicenseOwnerMembers(ApplicationDbContext dbContext)
+        {
+            var licensesWithOwner = dbContext.Licenses
+                .Where(l => l.OwnerId.HasValue)
+                .Select(l => new { l.Id, OwnerId = l.OwnerId.Value, l.StartDate, l.CreatedAt })
+                .ToList();
+
+            foreach (var license in licensesWithOwner)
+            {
+                var ownerMember = dbContext.LicenseMembers
+                    .FirstOrDefault(m => m.LicenseId == license.Id && m.CustomerId == license.OwnerId);
+
+                if (ownerMember is null)
+                {
+                    dbContext.LicenseMembers.Add(new LicenseMember
+                    {
+                        LicenseId = license.Id,
+                        CustomerId = license.OwnerId,
+                        OwnerId = license.OwnerId,
+                        Permission = 1,
+                        AssignedAt = license.StartDate,
+                        CreatedAt = license.CreatedAt,
+                        UpdatedAt = null
+                    });
+                }
+                else
+                {
+                    if (ownerMember.Permission != 1)
+                    {
+                        ownerMember.Permission = 1;
+                    }
+
+                    if (ownerMember.OwnerId != license.OwnerId)
+                    {
+                        ownerMember.OwnerId = license.OwnerId;
+                    }
+
+                    dbContext.LicenseMembers.Update(ownerMember);
+                }
+            }
+
+            dbContext.SaveChanges();
+        }
 
         private static IEnumerable<Admin> ReadAdmins(string filePath) =>
             ReadEntities(filePath, row => new Admin
