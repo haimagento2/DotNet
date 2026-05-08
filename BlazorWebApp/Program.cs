@@ -32,7 +32,7 @@ builder.Services.AddAuthorizationCore();
 
 builder.Services.AddScoped<BlazorWebApp.Services.AuthenticationService>();
 builder.Services.AddScoped<BlazorWebApp.Services.LicenseService>();
-builder.Services.AddHostedService<BlazorWebApp.Services.LicenseExpirationHostedService>();
+// builder.Services.AddHostedService<BlazorWebApp.Services.LicenseExpirationHostedService>();
 
 var app = builder.Build();
 
@@ -45,15 +45,15 @@ using (var scope = app.Services.CreateScope())
 
     if (app.Environment.IsDevelopment())
     {
-        dbContext.Database.EnsureDeleted();
+        // dbContext.Database.EnsureDeleted();
     }
 
-    dbContext.Database.EnsureCreated();
+    // dbContext.Database.EnsureCreated();
 
-    if (app.Environment.IsDevelopment() || importCsvData || !dbContext.CustomerGroups.Any())
-    {
-        CsvSeedImporter.ImportSeedData(dbContext, seedDataPath, force: app.Environment.IsDevelopment() || importCsvData);
-    }
+    // if (app.Environment.IsDevelopment() || importCsvData || !dbContext.CustomerGroups.Any())
+    // {
+    //     CsvSeedImporter.ImportSeedData(dbContext, seedDataPath, force: app.Environment.IsDevelopment() || importCsvData);
+    // }
 
     if (truncateLicenseData)
     {

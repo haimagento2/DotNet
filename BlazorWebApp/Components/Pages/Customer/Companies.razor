@@ -29,6 +29,13 @@ else
             <div class="alert alert-success">@successMessage</div>
         }
 
+        <div class="filter-bar">
+            <div class="filter-group">
+                <label>Search Companies</label>
+                <input class="form-control" placeholder="Search by company, industry, city, email, website or customer…" @bind="filterCompanySearch" @bind:event="oninput" @bind:after="ResetPage" />
+            </div>
+        </div>
+
         @if (companies == null)
         {
             <div class="loading">
@@ -89,7 +96,7 @@ else
                     <button class="page-btn" disabled="@(currentPage >= totalPages)" @onclick="() => GoToPage(currentPage + 1)">Next ›</button>
                 </div>
             }
-            <div class="stats"><p><strong>Showing:</strong> @(((currentPage - 1) * PageSize) + 1)–@(Math.Min(currentPage * PageSize, companies!.Count)) of <strong>@companies.Count</strong> companies</p></div>
+            <div class="stats"><p><strong>Showing:</strong> @(((currentPage - 1) * PageSize) + 1)–@(Math.Min(currentPage * PageSize, filteredCompanies.Count)) of <strong>@filteredCompanies.Count</strong> companies</p></div>
         }
     </div>
 
@@ -167,9 +174,23 @@ else
 
     private int currentPage = 1;
     private const int PageSize = 20;
-    private int totalPages => (int)Math.Ceiling((companies?.Count ?? 0) / (double)PageSize);
-    private List<Company> paged => companies?.Skip((currentPage - 1) * PageSize).Take(PageSize).ToList() ?? new();
+    private string filterCompanySearch = string.Empty;
+    private List<Company> filteredCompanies => string.IsNullOrWhiteSpace(filterCompanySearch)
+        ? companies ?? new()
+        : (companies ?? new()).Where(c =>
+            (c.Name ?? string.Empty).Contains(filterCompanySearch, StringComparison.OrdinalIgnoreCase) ||
+            (c.Industry ?? string.Empty).Contains(filterCompanySearch, StringComparison.OrdinalIgnoreCase) ||
+            (c.City ?? string.Empty).Contains(filterCompanySearch, StringComparison.OrdinalIgnoreCase) ||
+            (c.Email ?? string.Empty).Contains(filterCompanySearch, StringComparison.OrdinalIgnoreCase) ||
+            (c.Website ?? string.Empty).Contains(filterCompanySearch, StringComparison.OrdinalIgnoreCase) ||
+            c.Customers.Any(cust =>
+                ($"{cust.FirstName} {cust.LastName}".Contains(filterCompanySearch, StringComparison.OrdinalIgnoreCase) ||
+                (cust.Email ?? string.Empty).Contains(filterCompanySearch, StringComparison.OrdinalIgnoreCase))))
+            .ToList();
+    private int totalPages => (int)Math.Ceiling(filteredCompanies.Count / (double)PageSize);
+    private List<Company> paged => filteredCompanies.Skip((currentPage - 1) * PageSize).Take(PageSize).ToList();
     private void GoToPage(int page) { currentPage = Math.Clamp(page, 1, Math.Max(1, totalPages)); }
+    private void ResetPage() { currentPage = 1; }
 
     protected override async Task OnInitializedAsync()
     {
@@ -179,7 +200,14 @@ else
 
     private async Task Load()
     {
-        companies = DbContext.Companies.Include(c => c.Customers).OrderBy(c => c.Id).ToList();
+        // Clear change tracker to ensure fresh data from database
+        DbContext.ChangeTracker.Clear();
+
+        companies = DbContext.Companies
+            .AsNoTracking() // Ensure fresh data from database
+            .Include(c => c.Customers)
+            .OrderBy(c => c.Id)
+            .ToList();
         currentPage = 1;
     }
 
@@ -273,6 +301,10 @@ else
     .alert-info    { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
     .alert-danger  { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
     .alert-warning { background: #fff3cd; color: #856404; }
+
+    .filter-bar { background: white; padding: 1rem 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1); margin-bottom: 1.5rem; display: flex; gap: 1.5rem; align-items: flex-end; flex-wrap: wrap; }
+    .filter-group { display: flex; flex-direction: column; gap: .3rem; min-width: 280px; }
+    .filter-group label { font-weight: 500; color: #555; font-size: .88rem; }
 
     .table-container { background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1); overflow-x: auto; margin-bottom: 1.5rem; }
     .data-table { width: 100%; border-collapse: collapse; font-size: .9rem; }

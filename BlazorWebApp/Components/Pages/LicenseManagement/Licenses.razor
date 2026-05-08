@@ -499,7 +499,11 @@ else
 
     private void Load()
     {
+        // Clear change tracker to ensure fresh data from database
+        DbContext.ChangeTracker.Clear();
+
         var query = DbContext.Licenses
+            .AsNoTracking() // Ensure fresh data from database
             .Include(l => l.Program)
             .Include(l => l.Company)
             .Include(l => l.CustomerGroup)
@@ -577,10 +581,10 @@ else
                 .ToList();
         }
 
-        programs  = DbContext.Programs.OrderBy(p => p.Name).ToList();
-        companies = DbContext.Companies.OrderBy(c => c.Name).ToList();
-        customerGroups = DbContext.CustomerGroups.OrderBy(g => g.Name).ToList();
-        owners = DbContext.Customers.Include(c => c.Company).Include(c => c.CustomerGroup).OrderBy(c => c.Id).ToList();
+        programs  = DbContext.Programs.AsNoTracking().OrderBy(p => p.Name).ToList();
+        companies = DbContext.Companies.AsNoTracking().OrderBy(c => c.Name).ToList();
+        customerGroups = DbContext.CustomerGroups.AsNoTracking().OrderBy(g => g.Name).ToList();
+        owners = DbContext.Customers.AsNoTracking().Include(c => c.Company).Include(c => c.CustomerGroup).OrderBy(c => c.Id).ToList();
     }
 
     private Task RefreshData()

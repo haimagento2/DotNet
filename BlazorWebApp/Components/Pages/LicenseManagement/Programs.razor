@@ -29,6 +29,13 @@ else
             <div class="alert alert-success">@successMessage</div>
         }
 
+        <div class="filter-bar">
+            <div class="filter-group">
+                <label>Search Programs</label>
+                <input class="form-control" placeholder="Search by name, description or license…" @bind="filterProgramSearch" @bind:event="oninput" />
+            </div>
+        </div>
+
         @if (programs == null)
         {
             <div class="loading"><div class="spinner-border" role="status"></div><p>Loading…</p></div>
@@ -39,41 +46,18 @@ else
         }
         else
         {
-            <div class="cards-grid">
-                @foreach (var p in programs)
-                {
-                    <div class="program-card">
-                        <div class="card-top">
-                            <span class="program-name">@p.Name</span>
-                            <span class="version-badge">v@p.Version</span>
-                        </div>
-                        <p class="program-desc">@p.Description</p>
-                        <div class="card-bottom">
-                            <span class="price">${@p.Price.ToString("N2")}</span>
-                            <span class="license-count">@p.Licenses.Count license(s)</span>
-                        </div>
-                        <div class="card-footer">
-                            <small>Since @p.CreatedAt.ToString("yyyy-MM-dd")</small>
-                            <button class="btn-edit" @onclick="() => OpenEdit(p)">✏️ Edit</button>
-                        </div>
-                    </div>
-                }
-            </div>
-
             <div class="table-container">
                 <table class="data-table">
                     <thead>
-                        <tr><th>ID</th><th>Name</th><th>Description</th><th>Version</th><th>Price</th><th>Licenses</th><th>Created</th><th>Actions</th></tr>
+                        <tr><th>ID</th><th>Name</th><th>Description</th><th>Licenses</th><th>Created</th><th>Actions</th></tr>
                     </thead>
                     <tbody>
-                        @foreach (var p in programs)
+                        @foreach (var p in filteredPrograms)
                         {
                             <tr>
                                 <td class="id-cell">@p.Id</td>
                                 <td class="name-cell">@p.Name</td>
                                 <td>@p.Description</td>
-                                <td><span class="version-badge">v@p.Version</span></td>
-                                <td class="price-cell">$@p.Price.ToString("N2")</td>
                                 <td class="count-cell">@p.Licenses.Count</td>
                                 <td>@p.CreatedAt.ToString("yyyy-MM-dd")</td>
                                 <td><button class="btn-edit" @onclick="() => OpenEdit(p)">✏️ Edit</button></td>
@@ -82,7 +66,7 @@ else
                     </tbody>
                 </table>
             </div>
-            <div class="stats"><p><strong>Total Programs:</strong> @programs.Count</p></div>
+            <div class="stats"><p><strong>Total Programs:</strong> @filteredPrograms.Count</p></div>
         }
     </div>
 
@@ -104,22 +88,11 @@ else
                             <InputText class="form-control" @bind-Value="form.Name" placeholder="e.g. BasicCRM" />
                             <ValidationMessage For="@(() => form.Name)" />
                         </div>
-                        <div class="form-group">
-                            <label>Version *</label>
-                            <InputText class="form-control" @bind-Value="form.Version" placeholder="e.g. 1.0" />
-                            <ValidationMessage For="@(() => form.Version)" />
-                        </div>
                     </div>
 
                     <div class="form-group">
                         <label>Description</label>
                         <InputTextArea class="form-control" rows="3" @bind-Value="form.Description" placeholder="Brief description…" />
-                    </div>
-
-                    <div class="form-group">
-                        <label>Price (USD) *</label>
-                        <InputNumber class="form-control" @bind-Value="form.Price" />
-                        <ValidationMessage For="@(() => form.Price)" />
                     </div>
 
                     @if (!string.IsNullOrEmpty(formError))
@@ -141,6 +114,13 @@ else
 
 @code {
     private List<AppProgram>? programs;
+    private string filterProgramSearch = string.Empty;
+    private List<AppProgram> filteredPrograms => string.IsNullOrWhiteSpace(filterProgramSearch)
+        ? programs ?? new()
+        : (programs ?? new()).Where(p =>
+            (p.Name ?? string.Empty).Contains(filterProgramSearch, StringComparison.OrdinalIgnoreCase) ||
+            (p.Description ?? string.Empty).Contains(filterProgramSearch, StringComparison.OrdinalIgnoreCase))
+            .ToList();
     private bool showForm, isEditing, isSaving;
     private string? successMessage, formError;
     private ProgramForm form = new();
@@ -154,7 +134,14 @@ else
 
     private async Task Load()
     {
-        programs = DbContext.Programs.Include(p => p.Licenses).OrderBy(p => p.Id).ToList();
+        // Clear change tracker to ensure fresh data from database
+        DbContext.ChangeTracker.Clear();
+
+        programs = DbContext.Programs
+            .AsNoTracking() // Ensure fresh data from database
+            .Include(p => p.Licenses)
+            .OrderBy(p => p.Id)
+            .ToList();
     }
 
     private async Task RefreshData() { await Load(); successMessage = null; StateHasChanged(); }
@@ -164,7 +151,7 @@ else
     private void OpenEdit(AppProgram p)
     {
         editingId = p.Id;
-        form = new ProgramForm { Name = p.Name, Description = p.Description, Version = p.Version, Price = p.Price };
+        form = new ProgramForm { Name = p.Name, Description = p.Description, Price = p.Price };
         isEditing = true; formError = null; successMessage = null; showForm = true;
     }
 
@@ -179,14 +166,14 @@ else
             {
                 var e = DbContext.Programs.Find(editingId);
                 if (e == null) { formError = "Program not found."; return; }
-                e.Name = form.Name; e.Description = form.Description; e.Version = form.Version; e.Price = form.Price;
+                e.Name = form.Name; e.Description = form.Description; e.Price = form.Price;
                 e.UpdatedAt = DateTime.Now;
                 DbContext.Programs.Update(e);
                 successMessage = $"Program '{e.Name}' updated.";
             }
             else
             {
-                var e = new AppProgram { Name = form.Name, Description = form.Description, Version = form.Version, Price = form.Price, CreatedAt = DateTime.Now };
+                var e = new AppProgram { Name = form.Name, Description = form.Description, Price = form.Price, CreatedAt = DateTime.Now };
                 DbContext.Programs.Add(e);
                 successMessage = $"Program '{e.Name}' added.";
             }
@@ -201,7 +188,6 @@ else
     private sealed class ProgramForm
     {
         [System.ComponentModel.DataAnnotations.Required] public string Name { get; set; } = string.Empty;
-        [System.ComponentModel.DataAnnotations.Required] public string Version { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         [System.ComponentModel.DataAnnotations.Range(0, 999999)] public decimal Price { get; set; }
     }
@@ -245,6 +231,9 @@ else
     .count-cell { font-weight: 700; color: #764ba2; text-align: center; }
     .price-cell { font-weight: 600; color: #28a745; }
 
+    .filter-bar { background: white; padding: 1rem 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1); margin-bottom: 1.5rem; display: flex; gap: 1.5rem; align-items: flex-end; flex-wrap: wrap; }
+    .filter-group { display: flex; flex-direction: column; gap: .3rem; min-width: 280px; }
+    .filter-group label { font-weight: 500; color: #555; font-size: .88rem; }
     .btn-edit { background: #fff3cd; color: #856404; border: 1px solid #ffc107; padding: .3rem .75rem; border-radius: 4px; cursor: pointer; font-size: .82rem; }
     .btn-edit:hover { background: #ffc107; color: #fff; }
     .stats { background: white; padding: 1.25rem 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1); }

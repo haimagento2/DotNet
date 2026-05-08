@@ -29,6 +29,13 @@ else
             <div class="alert alert-success">@successMessage</div>
         }
 
+        <div class="filter-bar">
+            <div class="filter-group">
+                <label>Search Groups</label>
+                <input class="form-control" placeholder="Search by group, description or customer…" @bind="filterGroupSearch" @bind:event="oninput" @bind:after="ResetPage" />
+            </div>
+        </div>
+
         @if (groups == null)
         {
             <div class="loading">
@@ -42,33 +49,6 @@ else
         }
         else
         {
-            <div class="cards-grid">
-                @foreach (var group in paged)
-                {
-                    <div class="group-card">
-                        <div class="group-header">
-                            <span class="group-name">@group.Name</span>
-                            <span class="group-count">@group.Customers.Count customers</span>
-                        </div>
-                        <p class="group-description">@group.Description</p>
-                        <div class="group-members">
-                            @foreach (var customer in group.Customers.Take(5))
-                            {
-                                <span class="member-chip">@customer.FirstName @customer.LastName</span>
-                            }
-                            @if (group.Customers.Count > 5)
-                            {
-                                <span class="member-chip more">+@(group.Customers.Count - 5) more</span>
-                            }
-                        </div>
-                        <div class="group-footer">
-                            <small>Created: @group.CreatedAt.ToString("yyyy-MM-dd")</small>
-                            <button class="btn-edit" @onclick="() => OpenEdit(group)">✏️ Edit</button>
-                        </div>
-                    </div>
-                }
-            </div>
-
             <div class="table-container">
                 <table class="data-table">
                     <thead>
@@ -109,7 +89,7 @@ else
                 </div>
             }
             <div class="stats">
-                <p><strong>Showing:</strong> @(((currentPage - 1) * PageSize) + 1)–@(Math.Min(currentPage * PageSize, groups!.Count)) of <strong>@groups.Count</strong> groups &nbsp;|&nbsp; <strong>Total Customers:</strong> @groups.Sum(g => g.Customers.Count)</p>
+                <p><strong>Showing:</strong> @(((currentPage - 1) * PageSize) + 1)–@(Math.Min(currentPage * PageSize, filteredGroups.Count)) of <strong>@filteredGroups.Count</strong> groups &nbsp;|&nbsp; <strong>Total Customers:</strong> @filteredGroups.Sum(g => g.Customers.Count)</p>
             </div>
         }
     </div>
@@ -156,6 +136,15 @@ else
 
 @code {
     private List<CustomerGroup>? groups;
+    private string filterGroupSearch = string.Empty;
+    private List<CustomerGroup> filteredGroups => string.IsNullOrWhiteSpace(filterGroupSearch)
+        ? groups ?? new()
+        : (groups ?? new()).Where(g =>
+            (g.Name ?? string.Empty).Contains(filterGroupSearch, StringComparison.OrdinalIgnoreCase) ||
+            (g.Description ?? string.Empty).Contains(filterGroupSearch, StringComparison.OrdinalIgnoreCase) ||
+            g.Customers.Any(c => ($"{c.FirstName} {c.LastName}".Contains(filterGroupSearch, StringComparison.OrdinalIgnoreCase) ||
+                                (c.Email ?? string.Empty).Contains(filterGroupSearch, StringComparison.OrdinalIgnoreCase)))
+            ).ToList();
     private bool showForm, isEditing, isSaving;
     private string? successMessage, formError;
     private GroupForm form = new();
@@ -163,9 +152,10 @@ else
 
     private int currentPage = 1;
     private const int PageSize = 20;
-    private int totalPages => (int)Math.Ceiling((groups?.Count ?? 0) / (double)PageSize);
-    private List<CustomerGroup> paged => groups?.Skip((currentPage - 1) * PageSize).Take(PageSize).ToList() ?? new();
+    private int totalPages => (int)Math.Ceiling(filteredGroups.Count / (double)PageSize);
+    private List<CustomerGroup> paged => filteredGroups.Skip((currentPage - 1) * PageSize).Take(PageSize).ToList();
     private void GoToPage(int page) { currentPage = Math.Clamp(page, 1, Math.Max(1, totalPages)); }
+    private void ResetPage() { currentPage = 1; }
 
     protected override async Task OnInitializedAsync()
     {
@@ -175,7 +165,14 @@ else
 
     private async Task Load()
     {
-        groups = DbContext.CustomerGroups.Include(g => g.Customers).OrderBy(g => g.Id).ToList();
+        // Clear change tracker to ensure fresh data from database
+        DbContext.ChangeTracker.Clear();
+
+        groups = DbContext.CustomerGroups
+            .AsNoTracking() // Ensure fresh data from database
+            .Include(g => g.Customers)
+            .OrderBy(g => g.Id)
+            .ToList();
         currentPage = 1;
     }
 
@@ -238,6 +235,10 @@ else
     .page-header h1 { margin: 0; color: #333; font-size: 2rem; }
     .header-actions { display: flex; gap: .75rem; }
 
+    .filter-bar { background: white; padding: 1rem 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1); margin-bottom: 1.5rem; display: flex; gap: 1.5rem; align-items: flex-end; flex-wrap: wrap; }
+    .filter-group { display: flex; flex-direction: column; gap: .3rem; min-width: 280px; }
+    .filter-group label { font-weight: 500; color: #555; font-size: .88rem; }
+
     .btn { border: none; padding: .65rem 1.25rem; border-radius: 4px; cursor: pointer; font-weight: 500; font-size: .9rem; transition: opacity .2s; }
     .btn:hover { opacity: .85; }
     .btn-primary   { background: #667eea; color: white; }
@@ -249,18 +250,6 @@ else
     .alert-info    { background: #d1ecf1; color: #0c5460; }
     .alert-danger  { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
     .alert-warning { background: #fff3cd; color: #856404; }
-
-    .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
-
-    .group-card { background: white; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,.1); padding: 1.5rem; border-top: 4px solid #764ba2; }
-    .group-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: .75rem; }
-    .group-name { font-size: 1.2rem; font-weight: 700; color: #333; }
-    .group-count { background: #764ba2; color: white; padding: .2rem .7rem; border-radius: 12px; font-size: .8rem; font-weight: 600; }
-    .group-description { color: #666; font-size: .9rem; margin-bottom: 1rem; }
-    .group-members { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1rem; }
-    .member-chip { background: #f0ebf8; color: #764ba2; padding: .15rem .6rem; border-radius: 10px; font-size: .78rem; }
-    .member-chip.more { background: #e0e0e0; color: #666; }
-    .group-footer { display: flex; justify-content: space-between; align-items: center; color: #999; font-size: .8rem; border-top: 1px solid #f0f0f0; padding-top: .75rem; }
 
     .table-container { background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1); overflow-x: auto; margin-bottom: 1.5rem; }
     .data-table { width: 100%; border-collapse: collapse; font-size: .95rem; }

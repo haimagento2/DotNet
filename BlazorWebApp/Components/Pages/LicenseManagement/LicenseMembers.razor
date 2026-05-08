@@ -32,13 +32,23 @@ else
         <!-- Filter bar -->
         <div class="filter-bar">
             <div class="filter-group">
-                <label>Filter by License</label>
-                <select class="form-control" @onchange="FilterChanged">
-                    <option value="0">Select Option</option>
-                    @foreach (var lic in allLicenses)
-                    {
-                        <option value="@lic.Id">@lic.LicenseKey (@(lic.Program?.Name ?? "-"))</option>
-                    }
+                <label>Search</label>
+                <input class="form-control" placeholder="Search customer, owner, license key or company…" @bind="filterSearch" @bind:event="oninput" @bind:after="ResetPage" />
+            </div>
+            <div class="filter-group">
+                <label>Filter by License ID</label>
+                <div class="license-range-inputs">
+                    <input class="form-control" type="number" placeholder="Min ID" @bind="filterLicenseIdMin" @bind:event="oninput" @bind:after="ResetPage" />
+                    <input class="form-control" type="number" placeholder="Max ID" @bind="filterLicenseIdMax" @bind:event="oninput" @bind:after="ResetPage" />
+                </div>
+            </div>
+            <div class="filter-group">
+                <label>Filter by Permission</label>
+                <select class="form-control" @onchange="PermissionFilterChanged">
+                    <option value="0">All Permissions</option>
+                    <option value="1">Owner</option>
+                    <option value="2">Admin</option>
+                    <option value="3">Member</option>
                 </select>
             </div>
         </div>
@@ -82,7 +92,7 @@ else
             <div class="stats">
                 <p>
                     <strong>Showing:</strong> @paginatedMembers.Count of @filtered.Count total assignments
-                    @if (filterLicenseId != 0)
+                    @if (filterLicenseIdMin.HasValue || filterLicenseIdMax.HasValue)
                     {
                         <text> (filtered)</text>
                     }
@@ -179,10 +189,46 @@ else
     private List<LicenseMember>? members;
     private List<License>        allLicenses  = new();
     private List<Customer>       allCustomers = new();
-    private int filterLicenseId;
-    private List<LicenseMember> filtered => filterLicenseId == 0
-        ? (members ?? new())
-        : (members ?? new()).Where(m => m.LicenseId == filterLicenseId).ToList();
+    private int? filterLicenseIdMin;
+    private int? filterLicenseIdMax;
+    private int filterPermission;
+    private string filterSearch = string.Empty;
+    private List<LicenseMember> filtered
+    {
+        get
+        {
+            var list = members ?? new List<LicenseMember>();
+            if (filterLicenseIdMin.HasValue)
+            {
+                list = list.Where(m => m.LicenseId >= filterLicenseIdMin.Value).ToList();
+            }
+
+            if (filterLicenseIdMax.HasValue)
+            {
+                list = list.Where(m => m.LicenseId <= filterLicenseIdMax.Value).ToList();
+            }
+
+            if (filterPermission != 0)
+            {
+                list = list.Where(m => m.Permission == filterPermission).ToList();
+            }
+
+            if (string.IsNullOrWhiteSpace(filterSearch))
+            {
+                return list;
+            }
+
+            var query = filterSearch.Trim();
+            return list.Where(m =>
+                    (m.Customer != null && $"{m.Customer.FirstName} {m.Customer.LastName}".Contains(query, StringComparison.OrdinalIgnoreCase)) ||
+                    (!string.IsNullOrEmpty(m.Customer?.Email) && m.Customer.Email.Contains(query, StringComparison.OrdinalIgnoreCase)) ||
+                    (m.Owner != null && $"{m.Owner.FirstName} {m.Owner.LastName}".Contains(query, StringComparison.OrdinalIgnoreCase)) ||
+                    (m.License?.Owner != null && $"{m.License.Owner.FirstName} {m.License.Owner.LastName}".Contains(query, StringComparison.OrdinalIgnoreCase)) ||
+                    (m.License?.LicenseKey.ToString() ?? string.Empty).Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                    (m.Customer?.Company?.Name ?? string.Empty).Contains(query, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+    }
 
     private bool showForm, isEditing, isSaving;
     private string? successMessage, formError;
@@ -235,7 +281,11 @@ else
 
     private async Task Load()
     {
+        // Clear change tracker to ensure fresh data from database
+        DbContext.ChangeTracker.Clear();
+
         members = DbContext.LicenseMembers
+            .AsNoTracking() // Ensure fresh data from database, not cached
             .Include(m => m.License).ThenInclude(l => l!.Program)
             .Include(m => m.License).ThenInclude(l => l!.Company)
             .Include(m => m.License).ThenInclude(l => l!.Owner)
@@ -245,21 +295,26 @@ else
             .ToList();
 
         totalRecords = members.Count;
-        allLicenses  = DbContext.Licenses.Include(l => l.Program).Include(l => l.Company).OrderBy(l => l.Id).ToList();
-        allCustomers = DbContext.Customers.Include(c => c.Company).OrderBy(c => c.FirstName).ToList();
+        allLicenses  = DbContext.Licenses.AsNoTracking().Include(l => l.Program).Include(l => l.Company).OrderBy(l => l.Id).ToList();
+        allCustomers = DbContext.Customers.AsNoTracking().Include(c => c.Company).OrderBy(c => c.FirstName).ToList();
     }
 
     private async Task RefreshData() { currentPage = 1; await Load(); successMessage = null; StateHasChanged(); }
 
-    private void FilterChanged(ChangeEventArgs e)
+    private void PermissionFilterChanged(ChangeEventArgs e)
     {
-        filterLicenseId = int.TryParse(e.Value?.ToString(), out var id) ? id : 0;
-        currentPage = 1; // Reset to first page when filter changes
-        // Ensure page is valid
+        filterPermission = int.TryParse(e.Value?.ToString(), out var permission) ? permission : 0;
+        currentPage = 1;
         if (currentPage > totalPages && totalPages > 0)
         {
             currentPage = totalPages;
         }
+        StateHasChanged();
+    }
+
+    private void ResetPage()
+    {
+        currentPage = 1;
         StateHasChanged();
     }
 
@@ -382,6 +437,8 @@ else
     .filter-bar { background: white; padding: 1rem 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1); margin-bottom: 1.5rem; display: flex; gap: 1.5rem; align-items: flex-end; flex-wrap: wrap; }
     .filter-group { display: flex; flex-direction: column; gap: .3rem; min-width: 280px; }
     .filter-group label { font-weight: 500; color: #555; font-size: .88rem; }
+    .license-range-inputs { display: flex; gap: .75rem; }
+    .license-range-inputs .form-control { min-width: 0; }
     .table-container { background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1); overflow-x: auto; margin-bottom: 1.5rem; }
     .data-table { width: 100%; border-collapse: collapse; font-size: .88rem; }
     .data-table thead { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
