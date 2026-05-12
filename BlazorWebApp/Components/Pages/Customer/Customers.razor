@@ -33,23 +33,30 @@ else
 
         <div class="search-filters">
             <div class="search-group">
+                <label>Search Customers</label>
                 <input type="text" class="form-control search-input" placeholder="Search by name or email..." @bind="searchQuery" @bind:event="oninput" @bind:after="Search" />
             </div>
             <div class="filters-group">
-                <select class="form-control filter-select" @bind="filterCompanyId" @bind:after="ApplyCustomerFilters">
-                    <option value="">Select Option</option>
-                    @foreach (var c in companies)
-                    {
-                        <option value="@c.Id">@c.Name</option>
-                    }
-                </select>
-                <select class="form-control filter-select" @bind="filterGroupId" @bind:after="ApplyCustomerFilters">
-                    <option value="">Select Option</option>
-                    @foreach (var g in groups)
-                    {
-                        <option value="@g.Id">@g.Name</option>
-                    }
-                </select>
+                <div class="filter-group">
+                    <label>Company</label>
+                    <select class="form-control filter-select" @bind="filterCompanyId" @bind:after="ApplyCustomerFilters">
+                        <option value="">Select Option</option>
+                        @foreach (var c in companies)
+                        {
+                            <option value="@c.Id">@c.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Group</label>
+                    <select class="form-control filter-select" @bind="filterGroupId" @bind:after="ApplyCustomerFilters">
+                        <option value="">Select Option</option>
+                        @foreach (var g in groups)
+                        {
+                            <option value="@g.Id">@g.Name</option>
+                        }
+                    </select>
+                </div>
                 <button class="btn btn-secondary" @onclick="ClearFilters">Clear Filters</button>
             </div>
         </div>
@@ -247,9 +254,12 @@ else
         background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1);
         margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;
     }
-    .search-group { flex: 1; min-width: 200px; }
+    .search-group { flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: .35rem; }
+    .search-group label,
+    .filter-group label { font-weight: 500; color: #555; font-size: .88rem; }
     .search-input { width: 100%; padding: .6rem .85rem; border: 1px solid #d0d0d0; border-radius: 5px; font-size: .9rem; }
-    .filters-group { display: flex; gap: .75rem; align-items: center; }
+    .filters-group { display: flex; gap: .75rem; align-items: flex-end; flex-wrap: wrap; }
+    .filter-group { display: flex; flex-direction: column; gap: .35rem; min-width: 150px; }
     .filter-select { padding: .6rem .85rem; border: 1px solid #d0d0d0; border-radius: 5px; font-size: .9rem; min-width: 150px; }
 
     .btn {

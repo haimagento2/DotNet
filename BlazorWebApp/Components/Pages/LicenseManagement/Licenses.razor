@@ -52,44 +52,65 @@ else
             {
                 <div class="filters-section">
                 <div class="filters-row">
-                    <div class="filter-search-wrapper">
-                        <input class="form-control filter-input-search" type="text" placeholder="Search customer (name or email)…"
-                               @bind="filterCustomerSearch" @bind:event="oninput" @bind:after="ApplyLicenseFilters" />
+                    <div class="filter-group">
+                        <label>Search Customer</label>
+                        <div class="filter-search-wrapper">
+                            <input class="form-control filter-input-search" type="text" placeholder="Search customer (name or email)…"
+                                   @bind="filterCustomerSearch" @bind:event="oninput" @bind:after="ApplyLicenseFilters" />
+                        </div>
                     </div>
-                    <select class="form-control filter-select" @bind="filterProgramId" @bind:after="ApplyLicenseFilters">
-                        <option value="0">Select Option</option>
-                        @foreach (var p in programs)
-                        {
-                            <option value="@p.Id">@p.Name</option>
-                        }
-                    </select>
-                    <select class="form-control filter-select" @bind="filterCompanyId" @bind:after="ApplyLicenseFilters">
-                        <option value="">Select Option</option>
-                        @foreach (var c in companies)
-                        {
-                            <option value="@c.Id">@c.Name</option>
-                        }
-                    </select>
-                    <select class="form-control filter-select" @bind="filterGroupId" @bind:after="ApplyLicenseFilters">
-                        <option value="">Select Option</option>
-                        @foreach (var g in customerGroups)
-                        {
-                            <option value="@g.Id">@g.Name</option>
-                        }
-                    </select>
-                    <select class="form-control filter-select" @bind="filterType" @bind:after="ApplyLicenseFilters">
-                        <option value="">Select Option</option>
-                        <option value="1">Team size</option>
-                        <option value="2">Qty purchase</option>
-                        <option value="3">Seminar</option>
-                    </select>
-                    <select class="form-control filter-select" @bind="filterStatus" @bind:after="ApplyLicenseFilters">
-                        <option value="">Select Option</option>
-                        <option value="Active">Active</option>
-                        <option value="Expired">Expired</option>
-                        <option value="Suspended">Suspended</option>
-                    </select>
-                    <button class="btn btn-secondary btn-filter-clear" @onclick="ClearFilters">✕ Clear</button>
+                    <div class="filter-group">
+                        <label>Program</label>
+                        <select class="form-control filter-select" @bind="filterProgramId" @bind:after="ApplyLicenseFilters">
+                            <option value="0">Select Option</option>
+                            @foreach (var p in programs)
+                            {
+                                <option value="@p.Id">@p.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Company</label>
+                        <select class="form-control filter-select" @bind="filterCompanyId" @bind:after="ApplyLicenseFilters">
+                            <option value="">Select Option</option>
+                            @foreach (var c in companies)
+                            {
+                                <option value="@c.Id">@c.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Customer Group</label>
+                        <select class="form-control filter-select" @bind="filterGroupId" @bind:after="ApplyLicenseFilters">
+                            <option value="">Select Option</option>
+                            @foreach (var g in customerGroups)
+                            {
+                                <option value="@g.Id">@g.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>License Type</label>
+                        <select class="form-control filter-select" @bind="filterType" @bind:after="ApplyLicenseFilters">
+                            <option value="">Select Option</option>
+                            <option value="1">Team size</option>
+                            <option value="2">Qty purchase</option>
+                            <option value="3">Seminar</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Status</label>
+                        <select class="form-control filter-select" @bind="filterStatus" @bind:after="ApplyLicenseFilters">
+                            <option value="">Select Option</option>
+                            <option value="Active">Active</option>
+                            <option value="Expired">Expired</option>
+                            <option value="Suspended">Suspended</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>&nbsp;</label>
+                        <button class="btn btn-secondary btn-filter-clear" @onclick="ClearFilters">✕ Clear</button>
+                    </div>
                 </div>
             </div>
             }
@@ -784,8 +805,10 @@ else
     .page-header h1 { margin: 0; color: #333; font-size: 2rem; }
     .header-actions { display: flex; gap: .75rem; align-items: center; position: relative; }
     .filters-section { background: white; padding: 1rem 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1); margin-bottom: 1.5rem; }
-    .filters-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: .75rem; align-items: center; margin-bottom: 0.5rem; }
+    .filters-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: .75rem; align-items: flex-start; margin-bottom: 0.5rem; }
     .filters-row:last-child { margin-bottom: 0; }
+    .filter-group { display: flex; flex-direction: column; gap: .35rem; width: 100%; }
+    .filter-group label { font-weight: 500; color: #555; font-size: .88rem; }
     .filter-select { padding: .6rem .85rem; border: 1px solid #d0d0d0; border-radius: 5px; font-size: .9rem; width: 100%; background: white; cursor: pointer; }
     .filter-select:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,.1); }
     .filter-search-wrapper { width: 100%; }

@@ -1,0 +1,316 @@
+@page "/product-categories"
+@rendermode InteractiveServer
+@using BlazorWebApp.Data
+@using BlazorWebApp.Models
+@using Microsoft.EntityFrameworkCore
+@inject AuthenticationService AuthService
+@inject NavigationManager Navigation
+@inject ApplicationDbContext DbContext
+
+<PageTitle>Product Categories</PageTitle>
+
+@if (!AuthService.IsAuthenticated())
+{
+    <div class="alert alert-warning">You are not authorized. Please <a href="/login">login</a> first.</div>
+}
+else
+{
+    <div class="page-container">
+        <div class="page-header">
+            <h1>Product Categories</h1>
+            <div class="header-actions">
+                <button class="btn btn-success" @onclick="OpenAdd">+ Add Category</button>
+                <button class="btn btn-secondary" @onclick="RefreshData">🔄 Refresh</button>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(successMessage))
+        {
+            <div class="alert alert-success">@successMessage</div>
+        }
+
+        <div class="filter-bar">
+            <div class="filter-group">
+                <label>Search Categories</label>
+                <input class="form-control" placeholder="Search by category or description..." @bind="filterCategorySearch" @bind:event="oninput" @bind:after="ResetPage" />
+            </div>
+        </div>
+
+        @if (categories == null)
+        {
+            <div class="loading">
+                <div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div>
+                <p>Loading categories...</p>
+            </div>
+        }
+        else if (categories.Count == 0)
+        {
+            <div class="alert alert-info">No product categories found.</div>
+        }
+        else
+        {
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Category Name</th>
+                            <th>Description</th>
+                            <th>Products</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var category in paged)
+                        {
+                            <tr>
+                                <td class="id-cell">@category.Id</td>
+                                <td><span class="badge-group">@category.Name</span></td>
+                                <td>@category.Description</td>
+                                <td class="count-cell">@category.Products.Count</td>
+                                <td>@category.CreatedAt.ToString("yyyy-MM-dd")</td>
+                                <td><button class="btn-edit" @onclick="() => OpenEdit(category)">✏️ Edit</button></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (totalPages > 1)
+            {
+                <div class="pagination-bar">
+                    <button class="page-btn" disabled="@(currentPage == 1)" @onclick="() => GoToPage(currentPage - 1)">‹ Prev</button>
+                    @for (int i = 1; i <= totalPages; i++)
+                    {
+                        var p = i;
+                        <button class="page-btn @(p == currentPage ? "active" : "")" @onclick="() => GoToPage(p)">@p</button>
+                    }
+                    <button class="page-btn" disabled="@(currentPage >= totalPages)" @onclick="() => GoToPage(currentPage + 1)">Next ›</button>
+                </div>
+            }
+
+            <div class="stats">
+                <p><strong>Showing:</strong> @(((currentPage - 1) * PageSize) + 1)–@(Math.Min(currentPage * PageSize, filteredCategories.Count)) of <strong>@filteredCategories.Count</strong> categories</p>
+            </div>
+        }
+    </div>
+
+    @if (showForm)
+    {
+        <div class="modal-backdrop" @onclick="CloseForm"></div>
+        <div class="modal-panel">
+            <div class="modal-header">
+                <h2>@(isEditing ? "Edit Category" : "Add New Category")</h2>
+                <button class="btn-close" @onclick="CloseForm">✕</button>
+            </div>
+            <div class="modal-body">
+                <EditForm Model="form" OnValidSubmit="Save">
+                    <DataAnnotationsValidator />
+
+                    <div class="form-group">
+                        <label>Category Name *</label>
+                        <InputText class="form-control" @bind-Value="form.Name" placeholder="e.g. Productivity" />
+                        <ValidationMessage For="@(() => form.Name)" />
+                    </div>
+
+                    <div class="form-group">
+                        <label>Description</label>
+                        <InputTextArea class="form-control" rows="3" @bind-Value="form.Description" placeholder="Describe this category..." />
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(formError))
+                    {
+                        <div class="alert alert-danger">@formError</div>
+                    }
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CloseForm">Cancel</button>
+                        <button type="submit" class="btn btn-primary" disabled="@isSaving">@(isSaving ? "Saving…" : (isEditing ? "Save Changes" : "Add Category"))</button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    private List<ProductCategory>? categories;
+    private string filterCategorySearch = string.Empty;
+    private List<ProductCategory> filteredCategories => string.IsNullOrWhiteSpace(filterCategorySearch)
+        ? categories ?? new()
+        : (categories ?? new()).Where(c =>
+            c.Name.Contains(filterCategorySearch, StringComparison.OrdinalIgnoreCase) ||
+            c.Description.Contains(filterCategorySearch, StringComparison.OrdinalIgnoreCase) ||
+            c.Products.Any(p => (p.Name ?? string.Empty).Contains(filterCategorySearch, StringComparison.OrdinalIgnoreCase))
+        ).ToList();
+
+    private bool showForm;
+    private bool isEditing;
+    private bool isSaving;
+    private string? successMessage;
+    private string? formError;
+    private ProductCategoryForm form = new();
+    private int editingId;
+
+    private int currentPage = 1;
+    private const int PageSize = 20;
+    private int totalPages => (int)Math.Ceiling(filteredCategories.Count / (double)PageSize);
+    private List<ProductCategory> paged => filteredCategories.Skip((currentPage - 1) * PageSize).Take(PageSize).ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!AuthService.IsAuthenticated())
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        await Load();
+    }
+
+    private async Task Load()
+    {
+        DbContext.ChangeTracker.Clear();
+        categories = await DbContext.ProductCategories
+            .AsNoTracking()
+            .Include(c => c.Products)
+            .OrderBy(c => c.Id)
+            .ToListAsync();
+        currentPage = 1;
+    }
+
+    private async Task RefreshData()
+    {
+        await Load();
+        successMessage = null;
+        StateHasChanged();
+    }
+
+    private void OpenAdd()
+    {
+        form = new();
+        isEditing = false;
+        formError = null;
+        successMessage = null;
+        showForm = true;
+    }
+
+    private void OpenEdit(ProductCategory category)
+    {
+        editingId = category.Id;
+        form = new ProductCategoryForm { Name = category.Name, Description = category.Description };
+        isEditing = true;
+        formError = null;
+        successMessage = null;
+        showForm = true;
+    }
+
+    private void CloseForm()
+    {
+        showForm = false;
+        formError = null;
+    }
+
+    private async Task Save()
+    {
+        isSaving = true;
+        formError = null;
+        try
+        {
+            if (isEditing)
+            {
+                var entity = DbContext.ProductCategories.Find(editingId);
+                if (entity == null)
+                {
+                    formError = "Category not found.";
+                    return;
+                }
+
+                entity.Name = form.Name;
+                entity.Description = form.Description;
+                entity.UpdatedAt = DateTime.Now;
+                DbContext.ProductCategories.Update(entity);
+                successMessage = $"Category '{entity.Name}' updated.";
+            }
+            else
+            {
+                var entity = new ProductCategory
+                {
+                    Name = form.Name,
+                    Description = form.Description,
+                    CreatedAt = DateTime.Now
+                };
+                DbContext.ProductCategories.Add(entity);
+                successMessage = $"Category '{entity.Name}' added.";
+            }
+
+            await DbContext.SaveChangesAsync();
+            await Load();
+            showForm = false;
+        }
+        catch (Exception ex)
+        {
+            formError = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private void GoToPage(int page)
+    {
+        currentPage = Math.Clamp(page, 1, Math.Max(1, totalPages));
+    }
+
+    private void ResetPage()
+    {
+        currentPage = 1;
+    }
+
+    private sealed class ProductCategoryForm
+    {
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Category name is required")]
+        public string Name { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+    }
+}
+
+<style>
+    .page-container { padding: 2rem; background: #f5f5f5; min-height: 100vh; }
+    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1); }
+    .page-header h1 { margin: 0; color: #333; font-size: 2rem; }
+    .header-actions { display: flex; gap: .75rem; }
+    .filter-bar { background: white; padding: 1rem 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1); margin-bottom: 1.5rem; display: flex; gap: 1.5rem; align-items: flex-end; flex-wrap: wrap; }
+    .filter-group { display: flex; flex-direction: column; gap: .3rem; min-width: 280px; }
+    .filter-group label { font-weight: 500; color: #555; font-size: .88rem; }
+    .table-container { background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1); overflow-x: auto; margin-bottom: 1.5rem; }
+    .data-table { width: 100%; border-collapse: collapse; font-size: .95rem; }
+    .data-table thead { background: linear-gradient(135deg, #764ba2 0%, #667eea 100%); color: white; }
+    .data-table th { padding: .9rem 1rem; text-align: left; font-weight: 600; }
+    .data-table td { padding: .9rem 1rem; border-bottom: 1px solid #e0e0e0; color: #555; }
+    .data-table tbody tr:hover { background: #f9f9f9; }
+    .id-cell { width: 75px; }
+    .count-cell { text-align: center; }
+    .stats { text-align: right; font-size: .95rem; color: #555; }
+
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 1000; }
+    .modal-panel { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(720px, 90vw); background: white; border-radius: 12px; z-index: 1001; box-shadow: 0 30px 70px rgba(0,0,0,.25); }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 1.25rem 1.5rem 0; }
+    .modal-header h2 { margin: 0; font-size: 1.4rem; }
+    .btn-close { background: none; border: none; font-size: 1.2rem; cursor: pointer; }
+    .modal-body { padding: 1.5rem; }
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; margin-bottom: .35rem; font-weight: 600; color: #444; }
+    .form-control { width: 100%; padding: .65rem .85rem; border: 1px solid #d0d0d0; border-radius: 5px; font-size: .95rem; }
+    .modal-footer { display: flex; justify-content: flex-end; gap: .75rem; padding-top: 1rem; }
+    .btn { border: none; padding: .65rem 1.25rem; border-radius: 4px; cursor: pointer; font-weight: 500; }
+    .btn-primary { background: #667eea; color: white; }
+    .btn-secondary { background: #6c757d; color: white; }
+    .btn-success { background: #28a745; color: white; }
+    .alert { padding: 1rem 1.25rem; border-radius: 6px; margin-bottom: 1.25rem; }
+    .alert-success { background: #d4edda; color: #155724; }
+    .alert-info { background: #d1ecf1; color: #0c5460; }
+    .alert-danger { background: #f8d7da; color: #721c24; }
+</style>

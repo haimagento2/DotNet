@@ -12,6 +12,10 @@ namespace BlazorWebApp.Data
         public DbSet<Company>       Companies      { get; set; }
         public DbSet<CustomerGroup> CustomerGroups { get; set; }
         public DbSet<AppProgram>    Programs       { get; set; }
+        public DbSet<Product>       Products       { get; set; }
+        public DbSet<ProductCategory> ProductCategories { get; set; }
+        public DbSet<CategoryProductLink> CategoryProductLinks { get; set; }
+        public DbSet<ProgramProductAssociated> ProgramProductAssociations { get; set; }
         public DbSet<License>       Licenses       { get; set; }
         public DbSet<LicenseMember> LicenseMembers { get; set; }
 
@@ -20,6 +24,57 @@ namespace BlazorWebApp.Data
             base.OnModelCreating(modelBuilder);
 
             modelBuilder.Entity<AppProgram>().ToTable("Programs");
+            modelBuilder.Entity<Product>().ToTable("Products");
+            modelBuilder.Entity<ProductCategory>().ToTable("ProductCategories");
+            modelBuilder.Entity<CategoryProductLink>().ToTable("CategoryProductLinks");
+            modelBuilder.Entity<ProgramProductAssociated>().ToTable("ProgramProductAssociated");
+
+            // Product columns
+            modelBuilder.Entity<Product>(entity =>
+            {
+                entity.Property(p => p.Id).HasColumnName("product_id");
+                entity.Property(p => p.Name).HasColumnName("name").IsRequired();
+                entity.Property(p => p.SKU).HasColumnName("sku").IsRequired();
+                entity.Property(p => p.Type).HasColumnName("type").IsRequired();
+                entity.Property(p => p.Period).HasColumnName("Period").IsRequired();
+                entity.Property(p => p.EnableSubscriptionLinking).HasColumnName("EnableSubscriptionLinking");
+                entity.Property(p => p.LicenseOnly).HasColumnName("LicenseOnly");
+                entity.Property(p => p.CommunityOnly).HasColumnName("CommunityOnly");
+                entity.Property(p => p.SendEmailInstruction).HasColumnName("SendEmailInstruction");
+                entity.Property(p => p.ProductCategoryId).HasColumnName("ProductCategoryId");
+                entity.Property(p => p.Price).HasColumnName("price");
+                entity.Property(p => p.Image).HasColumnName("image").IsRequired();
+                entity.Property(p => p.Description).HasColumnName("description").IsRequired();
+            });
+
+            modelBuilder.Entity<ProductCategory>(entity =>
+            {
+                entity.Property(c => c.Id).HasColumnName("category_id");
+                entity.Property(c => c.Name).HasColumnName("name").IsRequired();
+                entity.Property(c => c.ParentId).HasColumnName("parent_id");
+                entity.Property(c => c.Image).HasColumnName("image").IsRequired();
+                entity.Property(c => c.Description).HasColumnName("description").IsRequired();
+                entity.HasOne(c => c.ParentCategory)
+                    .WithMany(c => c.ChildCategories)
+                    .HasForeignKey(c => c.ParentId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            modelBuilder.Entity<CategoryProductLink>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).HasColumnName("id");
+                entity.Property(e => e.CategoryId).HasColumnName("category_id");
+                entity.Property(e => e.ProductId).HasColumnName("product_id");
+                entity.HasOne(e => e.Category)
+                    .WithMany(c => c.CategoryProductLinks)
+                    .HasForeignKey(e => e.CategoryId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(e => e.Product)
+                    .WithMany(p => p.CategoryProductLinks)
+                    .HasForeignKey(e => e.ProductId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
 
             // License primary key
             modelBuilder.Entity<License>().HasKey(l => l.Id);
@@ -66,6 +121,27 @@ namespace BlazorWebApp.Data
 
             modelBuilder.Entity<LicenseMember>()
                 .HasIndex(lm => new { lm.LicenseId, lm.CustomerId }).IsUnique();
+
+            modelBuilder.Entity<Product>()
+                .HasOne(p => p.ProductCategory)
+                .WithMany(c => c.Products)
+                .HasForeignKey(p => p.ProductCategoryId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<ProgramProductAssociated>(entity =>
+            {
+                entity.HasKey(e => new { e.ProgramId, e.ProductId });
+
+                entity.HasOne(e => e.Program)
+                    .WithMany(p => p.ProgramProductAssociations)
+                    .HasForeignKey(e => e.ProgramId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.Product)
+                    .WithMany(p => p.ProgramProductAssociations)
+                    .HasForeignKey(e => e.ProductId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
         }
     }
 }

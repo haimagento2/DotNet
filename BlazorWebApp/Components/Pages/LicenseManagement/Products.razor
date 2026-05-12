@@ -1,0 +1,446 @@
+@page "/products"
+@rendermode InteractiveServer
+@using BlazorWebApp.Data
+@using BlazorWebApp.Models
+@using Microsoft.EntityFrameworkCore
+@inject AuthenticationService AuthService
+@inject NavigationManager Navigation
+@inject ApplicationDbContext DbContext
+
+<PageTitle>Products</PageTitle>
+
+@if (!AuthService.IsAuthenticated())
+{
+    <div class="alert alert-warning">You are not authorized. Please <a href="/login">login</a> first.</div>
+}
+else
+{
+    <div class="page-container">
+        <div class="page-header">
+            <h1>Products</h1>
+            <div class="header-actions">
+                <button class="btn btn-primary" @onclick="AddProduct">+ Add Product</button>
+                <button class="btn btn-secondary" @onclick="NavigateToCategories">Product Categories</button>
+                <button class="btn btn-secondary" @onclick="RefreshData">🔄 Refresh</button>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(successMessage))
+        {
+            <div class="alert alert-success">@successMessage</div>
+        }
+
+        <div class="filter-bar">
+            <div class="filter-group">
+                <label>Search Products</label>
+                <input class="form-control" placeholder="Search by name, SKU or type..." @bind="searchQuery" @bind:event="oninput" @bind:after="ApplyFilters" />
+            </div>
+            <div class="filter-group">
+                <label>Category</label>
+                <select class="form-control" @bind="filterCategoryId" @bind:after="ApplyFilters">
+                    <option value="">All Categories</option>
+                    @foreach (var category in categories)
+                    {
+                        <option value="@category.Id">@category.Name</option>
+                    }
+                </select>
+            </div>
+            <button class="btn btn-secondary" @onclick="ClearFilters">Clear Filters</button>
+        </div>
+
+        @if (products == null)
+        {
+            <div class="loading">
+                <div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div>
+                <p>Loading products...</p>
+            </div>
+        }
+        else if (products.Count == 0)
+        {
+            <div class="alert alert-info">No products found.</div>
+        }
+        else
+        {
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>SKU</th>
+                            <th>Category</th>
+                            <th>Type</th>
+                            <th>Period</th>
+                            <th>Linking</th>
+                            <th>License Only</th>
+                            <th>Community Only</th>
+                            <th>Instruction</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var product in paged)
+                        {
+                            <tr>
+                                <td class="id-cell">@product.Id</td>
+                                <td>@product.Name</td>
+                                <td>@product.SKU</td>
+                                <td>@(product.ProductCategory?.Name ?? "-")</td>
+                                <td>@product.Type</td>
+                                <td>@product.Period</td>
+                                <td>@(product.EnableSubscriptionLinking ? "Yes" : "No")</td>
+                                <td>@(product.LicenseOnly ? "Yes" : "No")</td>
+                                <td>@(product.CommunityOnly ? "Yes" : "No")</td>
+                                <td>@(product.SendEmailInstruction ? "Yes" : "No")</td>
+                                <td class="actions-cell">
+                                    <button class="btn-edit" @onclick="() => EditProduct(product)">✏️ Edit</button>
+                                    <button class="btn-danger" @onclick="() => DeleteProduct(product.Id)">🗑 Delete</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (totalPages > 1)
+            {
+                <div class="pagination-bar">
+                    <button class="page-btn" disabled="@(currentPage == 1)" @onclick="() => GoToPage(currentPage - 1)">‹ Prev</button>
+                    @for (int i = 1; i <= totalPages; i++)
+                    {
+                        var p = i;
+                        <button class="page-btn @(p == currentPage ? "active" : "")" @onclick="() => GoToPage(p)">@p</button>
+                    }
+                    <button class="page-btn" disabled="@(currentPage >= totalPages)" @onclick="() => GoToPage(currentPage + 1)">Next ›</button>
+                </div>
+            }
+
+            <div class="stats">
+                <p><strong>Showing:</strong> @(((currentPage - 1) * PageSize) + 1)–@(Math.Min(currentPage * PageSize, products.Count)) of <strong>@products.Count</strong> products</p>
+            </div>
+        }
+    </div>
+
+    @if (showForm)
+    {
+        <div class="modal-backdrop" @onclick="CloseForm"></div>
+        <div class="modal-panel">
+            <div class="modal-header">
+                <h2>@(isEditing ? "Edit Product" : "Add New Product")</h2>
+                <button class="btn-close" @onclick="CloseForm">✕</button>
+            </div>
+            <div class="modal-body">
+                <EditForm Model="form" OnValidSubmit="Save">
+                    <DataAnnotationsValidator />
+
+                    <div class="form-group">
+                        <label>Product Name *</label>
+                        <InputText class="form-control" @bind-Value="form.Name" placeholder="Product name" />
+                        <ValidationMessage For="@(() => form.Name)" />
+                    </div>
+
+                    <div class="form-group">
+                        <label>SKU *</label>
+                        <InputText class="form-control" @bind-Value="form.SKU" placeholder="SKU code" />
+                        <ValidationMessage For="@(() => form.SKU)" />
+                    </div>
+
+                    <div class="form-group">
+                        <label>Category</label>
+                        <InputSelect class="form-control" @bind-Value="form.ProductCategoryId">
+                            <option value="">No category</option>
+                            @foreach (var category in categories)
+                            {
+                                <option value="@category.Id">@category.Name</option>
+                            }
+                        </InputSelect>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Type *</label>
+                        <InputText class="form-control" @bind-Value="form.Type" placeholder="e.g. Standard" />
+                        <ValidationMessage For="@(() => form.Type)" />
+                    </div>
+
+                    <div class="form-group">
+                        <label>Period *</label>
+                        <InputText class="form-control" @bind-Value="form.Period" placeholder="e.g. Monthly" />
+                        <ValidationMessage For="@(() => form.Period)" />
+                    </div>
+
+                    <div class="form-grid">
+                        <label class="checkbox-group"><InputCheckbox @bind-Value="form.EnableSubscriptionLinking" /> Enable subscription linking</label>
+                        <label class="checkbox-group"><InputCheckbox @bind-Value="form.LicenseOnly" /> License only</label>
+                        <label class="checkbox-group"><InputCheckbox @bind-Value="form.CommunityOnly" /> Community only</label>
+                        <label class="checkbox-group"><InputCheckbox @bind-Value="form.SendEmailInstruction" /> Email instructions</label>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(formError))
+                    {
+                        <div class="alert alert-danger">@formError</div>
+                    }
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CloseForm">Cancel</button>
+                        <button type="submit" class="btn btn-primary" disabled="@isSaving">@(isSaving ? "Saving…" : (isEditing ? "Save Changes" : "Add Product"))</button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    private List<Product>? products;
+    private List<ProductCategory> categories = new();
+    private string searchQuery = string.Empty;
+    private int? filterCategoryId;
+    private string? successMessage;
+    private bool showForm;
+    private bool isEditing;
+    private bool isSaving;
+    private string? formError;
+    private ProductForm form = new();
+    private int editingId;
+
+    private int currentPage = 1;
+    private const int PageSize = 20;
+    private int totalPages => (int)Math.Ceiling((products?.Count ?? 0) / (double)PageSize);
+    private List<Product> paged => products?.Skip((currentPage - 1) * PageSize).Take(PageSize).ToList() ?? new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!AuthService.IsAuthenticated())
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        await LoadAll();
+    }
+
+    private async Task LoadAll()
+    {
+        categories = await DbContext.ProductCategories.OrderBy(c => c.Name).ToListAsync();
+
+        var query = DbContext.Products
+            .Include(p => p.ProductCategory)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(searchQuery))
+        {
+            var lowerSearch = searchQuery.Trim().ToLower();
+            query = query.Where(p => p.Name.ToLower().Contains(lowerSearch)
+                || p.SKU.ToLower().Contains(lowerSearch)
+                || p.Type.ToLower().Contains(lowerSearch)
+                || p.Period.ToLower().Contains(lowerSearch));
+        }
+
+        if (filterCategoryId.HasValue)
+        {
+            query = query.Where(p => p.ProductCategoryId == filterCategoryId.Value);
+        }
+
+        products = await query.OrderBy(p => p.Id).ToListAsync();
+        currentPage = 1;
+    }
+
+    private async Task RefreshData()
+    {
+        await LoadAll();
+        successMessage = "✓ Data refreshed";
+        StateHasChanged();
+    }
+
+    private async Task ApplyFilters()
+    {
+        await LoadAll();
+    }
+
+    private async Task ClearFilters()
+    {
+        searchQuery = string.Empty;
+        filterCategoryId = null;
+        currentPage = 1;
+        await LoadAll();
+    }
+
+    private void AddProduct()
+    {
+        form = new();
+        isEditing = false;
+        formError = null;
+        successMessage = null;
+        showForm = true;
+    }
+
+    private void EditProduct(Product product)
+    {
+        editingId = product.Id;
+        form = new ProductForm
+        {
+            Name = product.Name,
+            SKU = product.SKU,
+            Type = product.Type,
+            Period = product.Period,
+            EnableSubscriptionLinking = product.EnableSubscriptionLinking,
+            LicenseOnly = product.LicenseOnly,
+            CommunityOnly = product.CommunityOnly,
+            SendEmailInstruction = product.SendEmailInstruction,
+            ProductCategoryId = product.ProductCategoryId
+        };
+        isEditing = true;
+        formError = null;
+        successMessage = null;
+        showForm = true;
+    }
+
+    private async Task DeleteProduct(int productId)
+    {
+        var product = await DbContext.Products.FindAsync(productId);
+        if (product != null)
+        {
+            DbContext.Products.Remove(product);
+            await DbContext.SaveChangesAsync();
+            await LoadAll();
+            successMessage = $"Product '{product.Name}' deleted.";
+        }
+    }
+
+    private async Task Save()
+    {
+        isSaving = true;
+        formError = null;
+        try
+        {
+            if (isEditing)
+            {
+                var entity = DbContext.Products.Find(editingId);
+                if (entity == null)
+                {
+                    formError = "Product not found.";
+                    return;
+                }
+
+                entity.Name = form.Name;
+                entity.SKU = form.SKU;
+                entity.Type = form.Type;
+                entity.Period = form.Period;
+                entity.EnableSubscriptionLinking = form.EnableSubscriptionLinking;
+                entity.LicenseOnly = form.LicenseOnly;
+                entity.CommunityOnly = form.CommunityOnly;
+                entity.SendEmailInstruction = form.SendEmailInstruction;
+                entity.ProductCategoryId = form.ProductCategoryId;
+
+                DbContext.Products.Update(entity);
+                successMessage = $"Product '{entity.Name}' updated.";
+            }
+            else
+            {
+                var entity = new Product
+                {
+                    Name = form.Name,
+                    SKU = form.SKU,
+                    Type = form.Type,
+                    Period = form.Period,
+                    EnableSubscriptionLinking = form.EnableSubscriptionLinking,
+                    LicenseOnly = form.LicenseOnly,
+                    CommunityOnly = form.CommunityOnly,
+                    SendEmailInstruction = form.SendEmailInstruction,
+                    ProductCategoryId = form.ProductCategoryId
+                };
+                DbContext.Products.Add(entity);
+                successMessage = $"Product '{entity.Name}' added.";
+            }
+
+            await DbContext.SaveChangesAsync();
+            await LoadAll();
+            showForm = false;
+        }
+        catch (Exception ex)
+        {
+            formError = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private void CloseForm()
+    {
+        showForm = false;
+        formError = null;
+    }
+
+    private void GoToPage(int page)
+    {
+        currentPage = Math.Clamp(page, 1, Math.Max(1, totalPages));
+    }
+
+    private void NavigateToCategories()
+    {
+        Navigation.NavigateTo("/product-categories");
+    }
+
+    private sealed class ProductForm
+    {
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Product name is required")]
+        public string Name { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "SKU is required")]
+        public string SKU { get; set; } = string.Empty;
+
+        public int? ProductCategoryId { get; set; }
+
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Type is required")]
+        public string Type { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Period is required")]
+        public string Period { get; set; } = string.Empty;
+
+        public bool EnableSubscriptionLinking { get; set; }
+        public bool LicenseOnly { get; set; }
+        public bool CommunityOnly { get; set; }
+        public bool SendEmailInstruction { get; set; }
+    }
+}
+
+<style>
+    .page-container { padding: 2rem; background: #f5f5f5; min-height: 100vh; }
+    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1); }
+    .page-header h1 { margin: 0; color: #333; font-size: 2rem; }
+    .header-actions { display: flex; gap: .75rem; }
+    .filter-bar { background: white; padding: 1rem 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1); margin-bottom: 1.5rem; display: flex; gap: 1.5rem; align-items: flex-end; flex-wrap: wrap; }
+    .filter-group { display: flex; flex-direction: column; gap: .3rem; min-width: 240px; }
+    .filter-group label { font-weight: 500; color: #555; font-size: .88rem; }
+    .data-table { width: 100%; border-collapse: collapse; font-size: .95rem; }
+    .data-table thead { background: linear-gradient(135deg, #764ba2 0%, #667eea 100%); color: white; }
+    .data-table th { padding: .9rem 1rem; text-align: left; font-weight: 600; }
+    .data-table td { padding: .9rem 1rem; border-bottom: 1px solid #e0e0e0; color: #555; }
+    .data-table tbody tr:hover { background: #f9f9f9; }
+    .table-container { background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1); overflow-x: auto; margin-bottom: 1.5rem; }
+    .id-cell { width: 75px; }
+    .actions-cell { display: flex; gap: .5rem; }
+    .stats { text-align: right; font-size: .95rem; color: #555; }
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 1000; }
+    .modal-panel { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(720px, 90vw); background: white; border-radius: 12px; z-index: 1001; box-shadow: 0 30px 70px rgba(0,0,0,.25); }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 1.25rem 1.5rem 0; }
+    .modal-header h2 { margin: 0; font-size: 1.4rem; }
+    .btn-close { background: none; border: none; font-size: 1.2rem; cursor: pointer; }
+    .modal-body { padding: 1.5rem; }
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; margin-bottom: .35rem; font-weight: 600; color: #444; }
+    .form-control { width: 100%; padding: .65rem .85rem; border: 1px solid #d0d0d0; border-radius: 5px; font-size: .95rem; }
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
+    .checkbox-group { display: flex; align-items: center; gap: .5rem; font-weight: 500; color: #444; }
+    .btn { border: none; padding: .65rem 1.25rem; border-radius: 4px; cursor: pointer; font-weight: 500; }
+    .btn-primary { background: #667eea; color: white; }
+    .btn-secondary { background: #6c757d; color: white; }
+    .btn-success { background: #28a745; color: white; }
+    .btn-danger { background: #dc3545; color: white; }
+    .alert { padding: 1rem 1.25rem; border-radius: 6px; margin-bottom: 1.25rem; }
+    .alert-success { background: #d4edda; color: #155724; }
+    .alert-info { background: #d1ecf1; color: #0c5460; }
+    .alert-danger { background: #f8d7da; color: #721c24; }
+</style>

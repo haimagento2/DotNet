@@ -60,7 +60,7 @@ else
                                 <td>@p.Description</td>
                                 <td class="count-cell">@p.Licenses.Count</td>
                                 <td>@p.CreatedAt.ToString("yyyy-MM-dd")</td>
-                                <td><button class="btn-edit" @onclick="() => OpenEdit(p)">✏️ Edit</button></td>
+                                <td><button class="btn-edit" @onclick="() => OpenEdit(p.Id)">✏️ Edit</button></td>
                             </tr>
                         }
                     </tbody>
@@ -75,7 +75,7 @@ else
         <div class="modal-backdrop" @onclick="CloseForm"></div>
         <div class="modal-panel">
             <div class="modal-header">
-                <h2>@(isEditing ? "Edit Program" : "Add New Program")</h2>
+                <h2>Add New Program</h2>
                 <button class="btn-close" @onclick="CloseForm">✕</button>
             </div>
             <div class="modal-body">
@@ -103,7 +103,7 @@ else
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" @onclick="CloseForm">Cancel</button>
                         <button type="submit" class="btn btn-primary" disabled="@isSaving">
-                            @(isSaving ? "Saving…" : (isEditing ? "Save Changes" : "Add Program"))
+                            @(isSaving ? "Saving…" : "Add Program")
                         </button>
                     </div>
                 </EditForm>
@@ -121,10 +121,9 @@ else
             (p.Name ?? string.Empty).Contains(filterProgramSearch, StringComparison.OrdinalIgnoreCase) ||
             (p.Description ?? string.Empty).Contains(filterProgramSearch, StringComparison.OrdinalIgnoreCase))
             .ToList();
-    private bool showForm, isEditing, isSaving;
+    private bool showForm, isSaving;
     private string? successMessage, formError;
     private ProgramForm form = new();
-    private int editingId;
 
     protected override async Task OnInitializedAsync()
     {
@@ -146,14 +145,9 @@ else
 
     private async Task RefreshData() { await Load(); successMessage = null; StateHasChanged(); }
 
-    private void OpenAdd() { form = new(); isEditing = false; formError = null; successMessage = null; showForm = true; }
+    private void OpenAdd() { form = new(); formError = null; successMessage = null; showForm = true; }
 
-    private void OpenEdit(AppProgram p)
-    {
-        editingId = p.Id;
-        form = new ProgramForm { Name = p.Name, Description = p.Description, Price = p.Price };
-        isEditing = true; formError = null; successMessage = null; showForm = true;
-    }
+    private void OpenEdit(int id) => Navigation.NavigateTo($"/programs/edit/{id}");
 
     private void CloseForm() { showForm = false; formError = null; }
 
@@ -162,22 +156,10 @@ else
         isSaving = true; formError = null;
         try
         {
-            if (isEditing)
-            {
-                var e = DbContext.Programs.Find(editingId);
-                if (e == null) { formError = "Program not found."; return; }
-                e.Name = form.Name; e.Description = form.Description; e.Price = form.Price;
-                e.UpdatedAt = DateTime.Now;
-                DbContext.Programs.Update(e);
-                successMessage = $"Program '{e.Name}' updated.";
-            }
-            else
-            {
-                var e = new AppProgram { Name = form.Name, Description = form.Description, Price = form.Price, CreatedAt = DateTime.Now };
-                DbContext.Programs.Add(e);
-                successMessage = $"Program '{e.Name}' added.";
-            }
+            var e = new AppProgram { Name = form.Name, Description = form.Description, CreatedAt = DateTime.Now };
+            DbContext.Programs.Add(e);
             DbContext.SaveChanges();
+            successMessage = $"Program '{e.Name}' added.";
             await Load();
             showForm = false;
         }
@@ -189,7 +171,6 @@ else
     {
         [System.ComponentModel.DataAnnotations.Required] public string Name { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
-        [System.ComponentModel.DataAnnotations.Range(0, 999999)] public decimal Price { get; set; }
     }
 }
 
@@ -216,7 +197,6 @@ else
     .version-badge { background: #eef2ff; color: #667eea; padding: .2rem .6rem; border-radius: 10px; font-size: .78rem; font-weight: 600; }
     .program-desc { color: #666; font-size: .88rem; margin: .6rem 0 1rem; }
     .card-bottom { display: flex; justify-content: space-between; align-items: center; margin-bottom: .75rem; }
-    .price { font-size: 1.2rem; font-weight: 700; color: #28a745; }
     .license-count { background: #667eea; color: white; padding: .2rem .65rem; border-radius: 10px; font-size: .78rem; }
     .card-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f0f0f0; padding-top: .75rem; color: #999; font-size: .8rem; }
 
@@ -229,7 +209,6 @@ else
     .id-cell { font-weight: 600; color: #667eea; }
     .name-cell { font-weight: 600; color: #333; }
     .count-cell { font-weight: 700; color: #764ba2; text-align: center; }
-    .price-cell { font-weight: 600; color: #28a745; }
 
     .filter-bar { background: white; padding: 1rem 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1); margin-bottom: 1.5rem; display: flex; gap: 1.5rem; align-items: flex-end; flex-wrap: wrap; }
     .filter-group { display: flex; flex-direction: column; gap: .3rem; min-width: 280px; }

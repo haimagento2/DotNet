@@ -58,12 +58,24 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9FcnJvci5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
+[/home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/Components/Pages/LicenseManagement/EditProgram.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9MaWNlbnNlTWFuYWdlbWVudC9FZGl0UHJvZ3JhbS5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
 [/home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/Components/Pages/LicenseManagement/LicenseMembers.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9MaWNlbnNlTWFuYWdlbWVudC9MaWNlbnNlTWVtYmVycy5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
 [/home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/Components/Pages/LicenseManagement/Licenses.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9MaWNlbnNlTWFuYWdlbWVudC9MaWNlbnNlcy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/Components/Pages/LicenseManagement/ProductCategories.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9MaWNlbnNlTWFuYWdlbWVudC9Qcm9kdWN0Q2F0ZWdvcmllcy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/Components/Pages/LicenseManagement/Products.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9MaWNlbnNlTWFuYWdlbWVudC9Qcm9kdWN0cy5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
 [/home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/Components/Pages/LicenseManagement/Programs.razor]
