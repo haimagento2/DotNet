@@ -132,6 +132,12 @@ namespace BlazorWebApp.Data
             {
                 entity.HasKey(e => new { e.ProgramId, e.ProductId });
 
+                entity.Property(e => e.Type).HasColumnName("type");
+                entity.Property(e => e.Period).HasColumnName("period");
+                entity.Property(e => e.CustomPeriodDays).HasColumnName("custom_period");
+                entity.Property(e => e.LinkingLicense).HasColumnName("linking_license");
+                entity.Property(e => e.CommunityOnly).HasColumnName("community_only");
+
                 entity.HasOne(e => e.Program)
                     .WithMany(p => p.ProgramProductAssociations)
                     .HasForeignKey(e => e.ProgramId)

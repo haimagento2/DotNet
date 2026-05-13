@@ -137,6 +137,7 @@ else
                         @if (activeSection == AssociatedProductsSection)
                         {
                             <div class="form-section">
+                            <div class="form-section">
                                 <div class="section-header">
                                     <div>
                                         <h3>Associated Products</h3>
@@ -151,32 +152,57 @@ else
                                 }
                                 else
                                 {
+                                    <div class="filter-section">
+                                        <div class="filter-group">
+                                            <label>Search Products</label>
+                                            <input type="text" class="form-control" @bind="associatedProductSearch" @bind:event="oninput" placeholder="Search by name, SKU..." />
+                                        </div>
+                                    </div>
+
+                                    <div class="records-info">
+                                        <span>@filteredAssociatedProducts.Count() records found</span>
+                                    </div>
+
                                     <div class="table-container">
                                         <table class="data-table">
                                             <thead>
                                                 <tr>
-                                                    <th>ID</th>
-                                                    <th>Name</th>
-                                                    <th>Category</th>
-                                                    <th>Type</th>
+                                                    <th>Product ID</th>
+                                                    <th>Product Name</th>
+                                                    <th>SKU</th>
+                                                    <th>Sub License Type</th>
+                                                    <th>License Period</th>
+                                                    <th>Subscription Linking</th>
+                                                    <th>Auto-Renew License</th>
+                                                    <th>Community Only</th>
+                                                    <th>Send Email Instruction</th>
                                                     <th>Actions</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                @foreach (var product in selectedProducts)
+                                                @foreach (var product in filteredAssociatedProducts)
                                                 {
+                                                    var association = program?.ProgramProductAssociations.FirstOrDefault(pa => pa.ProductId == product.Id);
                                                     <tr>
                                                         <td>@product.Id</td>
                                                         <td>@product.Name</td>
-                                                        <td>@(product.ProductCategory?.Name ?? "-")</td>
-                                                        <td>@product.Type</td>
+                                                        <td>@product.SKU</td>
+                                                        <td>@(association?.Type ?? "-")</td>
+                                                        <td>@(association?.Period ?? "-")</td>
+                                                        <td>@(association?.LinkingLicense == true ? "Yes" : association?.LinkingLicense == false ? "No" : "-")</td>
+                                                        <td>No</td>
+                                                        <td>@(association?.CommunityOnly == true ? "Yes" : association?.CommunityOnly == false ? "No" : "-")</td>
+                                                        <td>@(product.SendEmailInstruction ? "Yes" : "No")</td>
                                                         <td>
                                                             <div class="action-dropdown">
-                                                                <button type="button" class="btn-action-menu">Actions ▼</button>
-                                                                <div class="dropdown-menu">
-                                                                    <button type="button" class="dropdown-item" @onclick="() => OpenEditProductModal(product)">Edit</button>
-                                                                    <button type="button" class="dropdown-item" @onclick="() => RemoveAssociatedProduct(product.Id)">Remove</button>
-                                                                </div>
+                                                                <button type="button" class="btn-action-menu" @onclick="() => ToggleDropdown(product.Id)">Edit ▼</button>
+                                                                @if (openDropdownProductId == product.Id)
+                                                                {
+                                                                    <div class="dropdown-menu" @onclick:stopPropagation="true">
+                                                                        <button type="button" class="dropdown-item" @onclick="() => OpenEditProductModal(product)">Edit</button>
+                                                                        <button type="button" class="dropdown-item" @onclick="() => RemoveAssociatedProduct(product.Id)">Remove</button>
+                                                                    </div>
+                                                                }
                                                             </div>
                                                         </td>
                                                     </tr>
@@ -185,6 +211,7 @@ else
                                         </table>
                                     </div>
                                 }
+                            </div>
                             </div>
                         }
 
@@ -205,138 +232,141 @@ else
 
             @if (showProductModal)
             {
-                <div class="modal-overlay" @onclick="CloseProductModal"></div>
-                <div class="modal-content" @onclick:stopPropagation="true">
-                    <div class="modal-header">
-                        <h2>Select Associated Products (@allProducts.Count available, @selectedProductIds.Count selected)</h2>
-                        <button type="button" class="close" @onclick="CloseProductModal">×</button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="form-group">
-                            <label>Search Products</label>
-                            <input class="form-control" @bind="productSearch" @bind:event="oninput" placeholder="Search by name, SKU, type or category..." />
+                <div class="modal-overlay" @onclick="CloseProductModal">
+                    <div class="modal-content" @onclick:stopPropagation="true">
+                        <div class="modal-header">
+                            <h2>Select Associated Products (@allProducts.Count available, @selectedProductIds.Count selected)</h2>
+                            <button type="button" class="close" @onclick="CloseProductModal">×</button>
                         </div>
-                        <div class="table-container">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th></th>
-                                        <th>ID</th>
-                                        <th>Name</th>
-                                        <th>Category</th>
-                                        <th>Type</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @if (allProducts != null && allProducts.Count > 0)
-                                    {
-                                        @foreach (var product in filteredProducts)
+                        <div class="modal-body">
+                            <div class="form-group">
+                                <label>Search Products</label>
+                                <input class="form-control" @bind="productSearch" @bind:event="oninput" placeholder="Search by name, SKU, type or category..." />
+                            </div>
+                            <div class="table-container">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th></th>
+                                            <th>ID</th>
+                                            <th>Name</th>
+                                            <th>Category</th>
+                                            <th>Type</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @if (allProducts != null && allProducts.Count > 0)
                                         {
-                                            <tr @key="product.Id">
-                                                <td>
-                                                    <input type="checkbox" checked="@selectedProductIds.Contains(product.Id)" @onchange="(e) => ToggleProductSelection(product.Id, e)" />
-                                                </td>
-                                                <td>@product.Id</td>
-                                                <td>@product.Name</td>
-                                                <td>@(product.ProductCategory?.Name ?? "-")</td>
-                                                <td>@product.Type</td>
+                                            @foreach (var product in filteredProducts)
+                                            {
+                                                <tr @key="product.Id">
+                                                    <td>
+                                                        <input type="checkbox" checked="@selectedProductIds.Contains(product.Id)" @onchange="(e) => ToggleProductSelection(product.Id, e)" />
+                                                    </td>
+                                                    <td>@product.Id</td>
+                                                    <td>@product.Name</td>
+                                                    <td>@(product.ProductCategory?.Name ?? "-")</td>
+                                                    <td>@product.Type</td>
+                                                </tr>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <tr>
+                                                <td colspan="5" style="text-align: center; padding: 1rem;">No products available</td>
                                             </tr>
                                         }
-                                    }
-                                    else
-                                    {
-                                        <tr>
-                                            <td colspan="5" style="text-align: center; padding: 1rem;">No products available</td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" @onclick="CloseProductModal">Cancel</button>
-                        <button type="button" class="btn btn-primary" @onclick="ApplyProductAssociationChanges">Save Associations</button>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" @onclick="CloseProductModal">Cancel</button>
+                            <button type="button" class="btn btn-primary" @onclick="ApplyProductAssociationChanges">Save Associations</button>
+                        </div>
                     </div>
                 </div>
             }
 
             @if (showEditProductModal && editingProduct != null)
             {
-                <div class="modal-overlay" @onclick="CloseEditProductModal"></div>
-                <div class="modal-content" @onclick:stopPropagation="true">
-                    <div class="modal-header">
-                        <h2>@editingProduct.Name</h2>
-                        <button type="button" class="close" @onclick="CloseEditProductModal">×</button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="form-group">
-                            <label>Sub License Type *</label>
-                            <select class="form-control" @bind="editProductForm.SubLicenseType">
-                                <option value="SingleUser">Single User</option>
-                                <option value="TeamSize">Team Size</option>
-                                <option value="Unlimited">Unlimited</option>
-                            </select>
-                            <small class="form-text text-muted">Type will determine how many sublicenses can be shared.</small>
+                <div class="modal-overlay" @onclick="CloseEditProductModal">
+                    <div class="modal-content" @onclick:stopPropagation="true">
+                        <div class="modal-header">
+                            <h2>@editingProduct.Name</h2>
+                            <button type="button" class="close" @onclick="CloseEditProductModal">×</button>
                         </div>
-
-                        <div class="form-group">
-                            <label>License Period *</label>
-                            <select class="form-control" @bind="editProductForm.LicensePeriod">
-                                <option value="Monthly">Monthly</option>
-                                <option value="Yearly">Yearly</option>
-                                <option value="Perpetual">Perpetual</option>
-                                <option value="Custom">Custom</option>
-                            </select>
-                            <small class="form-text text-muted">Specify a set period for licenses that renew or choose Perpetual for licenses that never expire.</small>
-                        </div>
-
-                        @if (editProductForm.LicensePeriod == "Custom")
-                        {
+                        <div class="modal-body">
                             <div class="form-group">
-                                <label>Custom Period (days)</label>
-                                <input type="number" class="form-control" @bind="editProductForm.CustomPeriodDays" placeholder="Enter number of days" />
-                                <small class="form-text text-muted">When License Period is Custom, specify the number of days until the license expires.</small>
+                                <label>Sub License Type *</label>
+                                <select class="form-control" @bind="editProductForm.SubLicenseType">
+                                    <option value="Quantity Purchased">Quantity Purchased</option>
+                                    <option value="Team Size">Team Size</option>
+                                    <option value="Seminar">Seminar</option>
+                                </select>
+                                <small class="form-text text-muted">Type will determine how many sublicenses can be shared.</small>
                             </div>
-                        }
 
-                        <div class="toggle-group">
-                            <label>Enable Subscription-License Linking</label>
-                            <label class="toggle-switch">
-                                <input type="checkbox" @bind="editProductForm.EnableSubscriptionLinking" />
-                                <span>@(editProductForm.EnableSubscriptionLinking ? "Yes" : "No")</span>
-                            </label>
-                        </div>
+                            <div class="form-group">
+                                <label>License Period *</label>
+                                <select class="form-control" @bind="editProductForm.LicensePeriod">
+                                    <option value="Monthly">Monthly</option>
+                                    <option value="Yearly">Yearly</option>
+                                    <option value="Perpetual">Perpetual</option>
+                                    <option value="Custom">Custom</option>
+                                </select>
+                                <small class="form-text text-muted">Specify a set period for licenses that renew or choose Perpetual for licenses that never expire.</small>
+                            </div>
 
-                        <div class="toggle-group">
-                            <label>Auto-Renew License</label>
-                            <label class="toggle-switch">
-                                <input type="checkbox" @bind="editProductForm.AutoRenewLicense" />
-                                <span>@(editProductForm.AutoRenewLicense ? "Yes" : "No")</span>
-                            </label>
-                            <small class="form-text text-muted">When set to Yes, license will automatically renew at the end of each license period.</small>
-                        </div>
+                            @if (editProductForm.LicensePeriod == "Custom")
+                            {
+                                <div class="form-group">
+                                    <label>Custom Period (days)</label>
+                                    <input type="number" class="form-control" @bind="editProductForm.CustomPeriodDays" placeholder="Enter number of days" />
+                                    <small class="form-text text-muted">When License Period is Custom, specify the number of days until the license expires.</small>
+                                </div>
+                            }
 
-                        <div class="toggle-group">
-                            <label>Community Only</label>
-                            <label class="toggle-switch">
-                                <input type="checkbox" @bind="editProductForm.CommunityOnly" />
-                                <span>@(editProductForm.CommunityOnly ? "Yes" : "No")</span>
-                            </label>
-                            <small class="form-text text-muted">When set to Yes, license can only be shared with Community users.</small>
-                        </div>
+                            <div class="form-group">
+                                <label>Enable Subscription-License Linking</label>
+                                <select class="form-control" @bind="editProductForm.EnableSubscriptionLinking">
+                                    <option value="true">Yes</option>
+                                    <option value="false">No</option>
+                                </select>
+                                <small class="form-text text-muted">Enable subscription-license linking.</small>
+                            </div>
 
-                        <div class="toggle-group">
-                            <label>Send Email Instruction</label>
-                            <label class="toggle-switch">
-                                <input type="checkbox" @bind="editProductForm.SendEmailInstruction" />
-                                <span>@(editProductForm.SendEmailInstruction ? "Yes" : "No")</span>
-                            </label>
-                            <small class="form-text text-muted">When set to Yes, customer will be sent email when license is assigned.</small>
+                            <div class="form-group">
+                                <label>Auto-Renew License</label>
+                                <select class="form-control" @bind="editProductForm.AutoRenewLicense">
+                                    <option value="true">Yes</option>
+                                    <option value="false">No</option>
+                                </select>
+                                <small class="form-text text-muted">When set to Yes, license will automatically renew at the end of each license period.</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Community Only</label>
+                                <select class="form-control" @bind="editProductForm.CommunityOnly">
+                                    <option value="true">Yes</option>
+                                    <option value="false">No</option>
+                                </select>
+                                <small class="form-text text-muted">When set to Yes, license can only be shared with Community users.</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Send Email Instruction</label>
+                                <select class="form-control" @bind="editProductForm.SendEmailInstruction">
+                                    <option value="true">Yes</option>
+                                    <option value="false">No</option>
+                                </select>
+                                <small class="form-text text-muted">When set to Yes, customer will be sent email when license is assigned.</small>
+                            </div>
                         </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" @onclick="CloseEditProductModal">Cancel</button>
-                        <button type="button" class="btn btn-primary" @onclick="SaveProductDefaults">Save Defaults</button>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" @onclick="CloseEditProductModal">Cancel</button>
+                            <button type="button" class="btn btn-primary" @onclick="SaveProductDefaults">Save</button>
+                        </div>
                     </div>
                 </div>
             }
@@ -360,7 +390,9 @@ else
     private List<int> selectedProductIds = new();
     private bool showProductModal;
     private string productSearch = string.Empty;
+    private string associatedProductSearch = string.Empty;
 
+    private int? openDropdownProductId;
     private bool showEditProductModal;
     private Product? editingProduct;
     private EditProductDefaultsForm editProductForm = new();
@@ -427,15 +459,26 @@ else
             var existingAssociations = DbContext.ProgramProductAssociations
                 .Where(pa => pa.ProgramId == program.Id)
                 .ToList();
-            DbContext.ProgramProductAssociations.RemoveRange(existingAssociations);
 
-            foreach (var productId in selectedProductIds.Distinct())
+            var selectedProductIdsDistinct = selectedProductIds.Distinct().ToList();
+            var associationsToRemove = existingAssociations
+                .Where(pa => !selectedProductIdsDistinct.Contains(pa.ProductId))
+                .ToList();
+
+            DbContext.ProgramProductAssociations.RemoveRange(associationsToRemove);
+
+            foreach (var productId in selectedProductIdsDistinct)
             {
-                DbContext.ProgramProductAssociations.Add(new ProgramProductAssociated
+                var existing = existingAssociations.FirstOrDefault(pa => pa.ProductId == productId);
+                if (existing == null)
                 {
-                    ProgramId = program.Id,
-                    ProductId = productId
-                });
+                    DbContext.ProgramProductAssociations.Add(new ProgramProductAssociated
+                    {
+                        ProgramId = program.Id,
+                        ProductId = productId,
+                        Period = "Yearly"
+                    });
+                }
             }
 
             DbContext.Programs.Update(program);
@@ -473,6 +516,11 @@ else
             || p.Type.Contains(productSearch, StringComparison.OrdinalIgnoreCase)
             || (p.ProductCategory?.Name.Contains(productSearch, StringComparison.OrdinalIgnoreCase) ?? false));
 
+    private IEnumerable<Product> filteredAssociatedProducts => string.IsNullOrWhiteSpace(associatedProductSearch)
+        ? selectedProducts
+        : selectedProducts.Where(p => p.Name.Contains(associatedProductSearch, StringComparison.OrdinalIgnoreCase)
+            || p.SKU.Contains(associatedProductSearch, StringComparison.OrdinalIgnoreCase));
+
     private void ToggleProductSelection(int productId, ChangeEventArgs args)
     {
         var isChecked = args.Value is bool value && value;
@@ -503,6 +551,18 @@ else
     {
         selectedProductIds.Remove(productId);
         selectedProducts = selectedProducts.Where(p => p.Id != productId).ToList();
+    }
+
+    private void ToggleDropdown(int productId)
+    {
+        if (openDropdownProductId == productId)
+        {
+            openDropdownProductId = null;
+        }
+        else
+        {
+            openDropdownProductId = productId;
+        }
     }
 
     private async Task OnImageUpload(InputFileChangeEventArgs e)
@@ -544,15 +604,17 @@ else
     private void OpenEditProductModal(Product product)
     {
         editingProduct = product;
+        var association = program?.ProgramProductAssociations.FirstOrDefault(pa => pa.ProductId == product.Id);
+
         editProductForm = new EditProductDefaultsForm
         {
             ProductId = product.Id,
-            SubLicenseType = "TeamSize",
-            LicensePeriod = "Yearly",
-            CustomPeriodDays = 0,
-            EnableSubscriptionLinking = product.EnableSubscriptionLinking,
+            SubLicenseType = association?.Type ?? "Team Size",
+            LicensePeriod = association?.Period ?? product.Period ?? "Yearly",
+            CustomPeriodDays = association?.CustomPeriodDays ?? 0,
+            EnableSubscriptionLinking = association?.LinkingLicense ?? product.EnableSubscriptionLinking,
             AutoRenewLicense = false,
-            CommunityOnly = product.CommunityOnly,
+            CommunityOnly = association?.CommunityOnly ?? product.CommunityOnly,
             SendEmailInstruction = product.SendEmailInstruction
         };
         showEditProductModal = true;
@@ -564,13 +626,40 @@ else
         editingProduct = null;
     }
 
-    private void SaveProductDefaults()
+    private async Task SaveProductDefaults()
     {
-        if (editingProduct != null)
+        if (editingProduct != null && program != null)
         {
-            editingProduct.EnableSubscriptionLinking = editProductForm.EnableSubscriptionLinking;
-            editingProduct.CommunityOnly = editProductForm.CommunityOnly;
-            editingProduct.SendEmailInstruction = editProductForm.SendEmailInstruction;
+            var association = program.ProgramProductAssociations.FirstOrDefault(pa => pa.ProductId == editingProduct.Id);
+            if (association != null)
+            {
+                association.Type = editProductForm.SubLicenseType;
+                association.Period = editProductForm.LicensePeriod;
+                association.CustomPeriodDays = editProductForm.CustomPeriodDays;
+                association.LinkingLicense = editProductForm.EnableSubscriptionLinking;
+                association.CommunityOnly = editProductForm.CommunityOnly;
+
+                DbContext.ProgramProductAssociations.Update(association);
+                await DbContext.SaveChangesAsync();
+            }
+            else
+            {
+                var newAssociation = new ProgramProductAssociated
+                {
+                    ProgramId = program.Id,
+                    ProductId = editingProduct.Id,
+                    Type = editProductForm.SubLicenseType,
+                    Period = editProductForm.LicensePeriod,
+                    CustomPeriodDays = editProductForm.CustomPeriodDays,
+                    LinkingLicense = editProductForm.EnableSubscriptionLinking,
+                    CommunityOnly = editProductForm.CommunityOnly
+                };
+                DbContext.ProgramProductAssociations.Add(newAssociation);
+                await DbContext.SaveChangesAsync();
+                program.ProgramProductAssociations.Add(newAssociation);
+            }
+            
+            successMessage = "Product defaults saved successfully.";
         }
         CloseEditProductModal();
     }
@@ -590,7 +679,7 @@ else
     private sealed class EditProductDefaultsForm
     {
         public int ProductId { get; set; }
-        public string SubLicenseType { get; set; } = "TeamSize";
+        public string SubLicenseType { get; set; } = "Team Size";
         public string LicensePeriod { get; set; } = "Yearly";
         public int CustomPeriodDays { get; set; }
         public bool EnableSubscriptionLinking { get; set; }
@@ -661,15 +750,24 @@ else
     .toggle-switch label span:last-child { color: #6c757d; }
     .btn-action-menu { background: #007bff; color: white; border: none; padding: .5rem 1rem; border-radius: 4px; cursor: pointer; font-size: .9rem; font-weight: 500; }
     .btn-action-menu:hover { background: #0056b3; }
-    .action-dropdown { position: relative; display: inline-block; }
-    .action-dropdown:hover .dropdown-menu { display: block; }
-    .dropdown-menu { display: none; position: absolute; top: 100%; right: 0; z-index: 1000; min-width: 140px; margin-top: .25rem; padding: .25rem 0; font-size: .875rem; background: #fff; border: 1px solid rgba(0,0,0,.15); border-radius: .25rem; box-shadow: 0 .5rem 1rem rgba(0,0,0,.1); }
-    .dropdown-item { width: 100%; padding: .5rem 1rem; border: none; background: transparent; text-align: left; cursor: pointer; font-size: .9rem; color: #333; }
-    .dropdown-item:hover { background: #f8f9fa; color: #dc3545; }
+    .action-dropdown { position: relative; display: inline-block; z-index: 100; }
+    .action-dropdown .dropdown-menu { position: absolute; top: 100%; left: 0; z-index: 1000; min-width: 140px; margin-top: .25rem; padding: .5rem 0; font-size: .875rem; background: #fff; border: 1px solid rgba(0,0,0,.15); border-radius: .25rem; box-shadow: 0 .5rem 1rem rgba(0,0,0,.1); display: block; }
+    .action-dropdown .dropdown-item { width: 100%; padding: .5rem 1rem; border: none; background: transparent; text-align: left; cursor: pointer; font-size: .9rem; color: #333; }
+    .action-dropdown .dropdown-item:hover { background: #f8f9fa; color: #dc3545; }
     .toggle-group { margin-bottom: 1rem; }
     .toggle-group label:first-child { display: block; margin-bottom: .5rem; font-weight: 500; }
     .toggle-switch { display: flex; align-items: center; gap: .5rem; cursor: pointer; }
     .toggle-switch input[type="checkbox"] { width: 1.5rem; height: 1.5rem; cursor: pointer; }
     .toggle-switch span { color: #6c757d; font-size: .9rem; }
     .form-text { font-size: .875rem; color: #6c757d; display: block; margin-top: .25rem; }
+    .filter-section { background: #f8f9fa; padding: 1rem; border-radius: 4px; margin-bottom: 1rem; }
+    .filter-group { display: flex; flex-direction: column; gap: .5rem; }
+    .filter-group label { font-weight: 500; color: #333; font-size: .9rem; }
+    .records-info { padding: .75rem 0; color: #666; font-size: .9rem; font-weight: 500; }
+    .data-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    .data-table thead { background: #2d2d2d; color: white; }
+    .data-table th { padding: .75rem; text-align: left; font-weight: 600; font-size: .9rem; }
+    .data-table td { padding: .75rem; border-bottom: 1px solid #ddd; font-size: .9rem; }
+    .data-table tbody tr:hover { background: #f5f5f5; }
+    .table-container { overflow-x: auto; }
 </style>

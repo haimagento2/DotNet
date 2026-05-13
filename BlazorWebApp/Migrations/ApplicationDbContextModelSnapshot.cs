@@ -142,6 +142,24 @@ namespace BlazorWebApp.Migrations
                     b.Property<int>("ProductId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("Type")
+                        .HasColumnName("type")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Period")
+                        .HasColumnName("period")
+                        .HasColumnType("TEXT");
+                    b.Property<int?>("CustomPeriodDays")
+                        .HasColumnName("custom_period")
+                        .HasColumnType("INTEGER");
+                    b.Property<bool?>("LinkingLicense")
+                        .HasColumnName("linking_license")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("CommunityOnly")
+                        .HasColumnName("community_only")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("ProgramId", "ProductId");
 
                     b.HasIndex("ProductId");

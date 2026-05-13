@@ -119,6 +119,11 @@ static void EnsureProductsTables(ApplicationDbContext dbContext)
         CREATE TABLE IF NOT EXISTS ProgramProductAssociated (
             ProgramId INTEGER NOT NULL,
             ProductId INTEGER NOT NULL,
+            type TEXT,
+            period TEXT,
+            custom_period INTEGER,
+            linking_license INTEGER,
+            community_only INTEGER,
             PRIMARY KEY (ProgramId, ProductId),
             FOREIGN KEY (ProgramId) REFERENCES Programs (Id) ON DELETE CASCADE,
             FOREIGN KEY (ProductId) REFERENCES Products (product_id) ON DELETE CASCADE
@@ -156,6 +161,10 @@ static void EnsureProductsTables(ApplicationDbContext dbContext)
     if (!ColumnExists(dbContext, "ProductCategories", "description"))
     {
         dbContext.Database.ExecuteSqlRaw("ALTER TABLE ProductCategories ADD COLUMN description TEXT NOT NULL DEFAULT '';");
+    }
+    if (TableExists(dbContext, "ProgramProductAssociated") && !ColumnExists(dbContext, "ProgramProductAssociated", "custom_period"))
+    {
+        dbContext.Database.ExecuteSqlRaw("ALTER TABLE ProgramProductAssociated ADD COLUMN custom_period INTEGER;");
     }
 }
 
