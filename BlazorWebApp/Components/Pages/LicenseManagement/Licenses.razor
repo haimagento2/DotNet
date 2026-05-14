@@ -212,19 +212,18 @@ else
 
     @if (showForm)
     {
-        <div class="modal-backdrop" @onclick="CloseForm"></div>
-        <div class="modal-panel">
-            <div class="modal-header">
+        <div class="page-form-panel">
+            <div class="panel-header">
                 <h2>@(isEditing ? "Edit License" : "Add New License")</h2>
                 <button class="btn-close" @onclick="CloseForm">✕</button>
             </div>
-            <div class="modal-body">
+            <div class="panel-body">
                 <EditForm Model="form" OnValidSubmit="Save">
                     <DataAnnotationsValidator />
 
                     <div class="form-group">
                         <label>License Key *</label>
-                        <InputNumber class="form-control" @bind-Value="form.LicenseKey" placeholder="e.g. 12345" />
+                        <InputText class="form-control" @bind-Value="form.LicenseKey" placeholder="e.g. ABC123" />
                         <ValidationMessage For="@(() => form.LicenseKey)" />
                     </div>
 
@@ -250,7 +249,7 @@ else
                                 }
                             </InputSelect>
                         </div>
-                                        <div class="form-group">
+                        <div class="form-group">
                             <label>Customer Group</label>
                             <InputSelect class="form-control" @bind-Value="form.CustomerGroupId">
                                 <option value="">— None —</option>
@@ -262,7 +261,7 @@ else
                         </div>
                         <div class="form-group">
                             <label>License Owner</label>
-                            <InputSelect class="form-control" @bind-Value="form.OwnerId">
+                            <InputSelect class="form-control" @bind-Value="SelectedOwnerId">
                                 <option value="0">— Select Owner —</option>
                                 @foreach (var c in owners)
                                 {
@@ -274,9 +273,9 @@ else
                         <div class="form-group">
                             <label>Sub License Type</label>
                             <InputSelect class="form-control" @bind-Value="form.SubLicenseType">
-                                <option value="1">Team size</option>
-                                <option value="2">Qty purchase</option>
-                                <option value="3">Seminar</option>
+                                <option value="@((int)LicenseType.TeamSize)">Team size</option>
+                                <option value="@((int)LicenseType.QtyPurchase)">Qty purchase</option>
+                                <option value="@((int)LicenseType.Seminar)">Seminar</option>
                             </InputSelect>
                         </div>
                     </div>
@@ -398,7 +397,7 @@ else
                         <div class="alert alert-danger">@formError</div>
                     }
 
-                    <div class="modal-footer">
+                    <div class="panel-footer">
                         <button type="button" class="btn btn-secondary" @onclick="CloseForm">Cancel</button>
                         <button type="submit" class="btn btn-primary" disabled="@isSaving">
                             @(isSaving ? "Saving…" : (isEditing ? "Save Changes" : "Add License"))
@@ -436,6 +435,21 @@ else
     private bool showActionsColumn = true;
     private string? successMessage, formError, memberError;
     private LicenseForm form = new();
+    private int SelectedOwnerId
+    {
+        get => form.OwnerId;
+        set
+        {
+            form.OwnerId = value;
+            if (value == 0)
+            {
+                form.CustomerGroupId = null;
+                return;
+            }
+            var owner = owners.FirstOrDefault(o => o.Id == value);
+            form.CustomerGroupId = owner?.CustomerGroupId;
+        }
+    }
     private int editingLicenseId;
     private string customerSearch = string.Empty;
     private string licenseSearch = string.Empty;
@@ -518,6 +532,11 @@ else
         Load();
     }
 
+    private void SetFormVisibilityFromRoute()
+    {
+        // Placeholder for future use if routing is needed
+    }
+
     private void Load()
     {
         // Clear change tracker to ensure fresh data from database
@@ -539,21 +558,11 @@ else
         if (!string.IsNullOrWhiteSpace(licenseSearch))
         {
             var lowerSearch = licenseSearch.Trim().ToLower();
-            if (int.TryParse(lowerSearch, out var licenseKeySearch))
-            {
-                query = query.Where(l => l.LicenseKey == licenseKeySearch ||
-                                         l.Program!.Name!.ToLower().Contains(lowerSearch) ||
-                                         (l.Owner != null && (l.Owner.FirstName.ToLower().Contains(lowerSearch) ||
-                                                              l.Owner.LastName.ToLower().Contains(lowerSearch) ||
-                                                              l.Owner.Email.ToLower().Contains(lowerSearch))));
-            }
-            else
-            {
-                query = query.Where(l => l.Program!.Name!.ToLower().Contains(lowerSearch) ||
-                                         (l.Owner != null && (l.Owner.FirstName.ToLower().Contains(lowerSearch) ||
-                                                              l.Owner.LastName.ToLower().Contains(lowerSearch) ||
-                                                              l.Owner.Email.ToLower().Contains(lowerSearch))));
-            }
+            query = query.Where(l => l.LicenseKey.ToLower().Contains(lowerSearch) ||
+                                     l.Program!.Name!.ToLower().Contains(lowerSearch) ||
+                                     (l.Owner != null && (l.Owner.FirstName.ToLower().Contains(lowerSearch) ||
+                                                          l.Owner.LastName.ToLower().Contains(lowerSearch) ||
+                                                          l.Owner.Email.ToLower().Contains(lowerSearch))));
         }
 
         if (filterProgramId > 0)
@@ -640,8 +649,11 @@ else
 
     private void OpenAdd()
     {
+        isEditing = false;
         form = new LicenseForm { StartDate = DateTime.Today, ExpiryDate = DateTime.Today.AddYears(1) };
-        isEditing = false; formError = null; successMessage = null; showForm = true;
+        formError = null;
+        successMessage = null;
+        showForm = true;
     }
 
     private void OpenEdit(License l)
@@ -661,7 +673,14 @@ else
         isEditing = true; formError = null; successMessage = null; showForm = true;
     }
 
-    private void CloseForm() { showForm = false; formError = null; memberError = null; }
+    private void CloseForm() 
+    { 
+        isEditing = false;
+        showForm = false; 
+        formError = null; 
+        memberError = null;
+        editingLicenseId = 0;
+    }
 
     private async Task AddSelectedMembers()
     {
@@ -778,6 +797,7 @@ else
             }
             DbContext.SaveChanges();
             Load();
+            isEditing = false;
             showForm = false;
         }
         catch (Exception ex) { formError = $"Error: {ex.Message}"; }
@@ -786,7 +806,7 @@ else
 
     private sealed class LicenseForm
     {
-        [System.ComponentModel.DataAnnotations.Required] public int LicenseKey { get; set; }
+        [System.ComponentModel.DataAnnotations.Required] public string LicenseKey { get; set; } = string.Empty;
         public int   ProgramId   { get; set; }
         public int   OwnerId     { get; set; }
         public int?  CompanyId   { get; set; }
@@ -851,6 +871,12 @@ else
     .stats p { margin: 0; color: #555; }
     .pagination { display: flex; justify-content: center; gap: .5rem; margin-top: 1rem; flex-wrap: wrap; }
     .pagination .btn { padding: .5rem 1rem; min-width: auto; }
+    .page-form-panel { background: white; border-radius: 12px; padding: 1.5rem; box-shadow: 0 15px 35px rgba(0,0,0,.12); margin-bottom: 1.5rem; }
+    .panel-header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1.25rem; }
+    .panel-header h2 { margin: 0; font-size: 1.5rem; color: #333; }
+    .panel-body { display: block; }
+    .panel-footer { display: flex; justify-content: flex-end; gap: .75rem; margin-top: 1rem; }
+
     .customer-link { color: #667eea; text-decoration: none; font-weight: 500; }
     .customer-link:hover { text-decoration: underline; }
     .loading { display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 200px; background: white; border-radius: 8px; }

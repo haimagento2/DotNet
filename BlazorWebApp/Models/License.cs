@@ -10,7 +10,7 @@ namespace BlazorWebApp.Models
     public class License
     {
         public int Id { get; set; }
-        public int LicenseKey { get; set; }
+        public string LicenseKey { get; set; } = string.Empty;
         public int ProgramId { get; set; }
         public int? CompanyId { get; set; }
         public int? CustomerGroupId { get; set; }

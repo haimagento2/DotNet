@@ -112,7 +112,7 @@ namespace BlazorWebApp.Data
             ReadEntities(filePath, row => new License
             {
                 Id = ParseInt(row["Id"]),
-                LicenseKey = ParseInt(row["LicenseKey"]),
+                LicenseKey = ParseString(row["LicenseKey"]),
                 ProgramId = ParseInt(row["ProgramId"]),
                 CompanyId = ParseNullableInt(row["CompanyId"]),
                 CustomerGroupId = ParseNullableInt(row["CustomerGroupId"]),

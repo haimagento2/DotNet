@@ -35,200 +35,232 @@ else
         }
 
         <div class="edit-form-container">
-            <EditForm Model="formModel" OnValidSubmit="SaveCustomer">
-                <DataAnnotationsValidator />
+            <div class="customer-edit-grid">
+                <aside class="customer-edit-sidebar">
+                    <div class="sidebar-card">
+                        <div class="sidebar-title">Customer Information</div>
+                        <button type="button" class="sidebar-item @(activeSection == CustomerSection ? "active" : "")" @onclick="() => SetSection(CustomerSection)">
+                            Account Information
+                        </button>
+                        <div class="sidebar-divider"></div>
+                        <button type="button" class="sidebar-item @(activeSection == LicenseSection ? "active" : "")" @onclick="() => SetSection(LicenseSection)">
+                            Licenses
+                        </button>
+                    </div>
+                </aside>
 
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>First Name *</label>
-                        <InputText class="form-control" @bind-Value="formModel.FirstName" placeholder="First name" />
-                        <ValidationMessage For="@(() => formModel.FirstName)" />
-                    </div>
-                    <div class="form-group">
-                        <label>Last Name *</label>
-                        <InputText class="form-control" @bind-Value="formModel.LastName" placeholder="Last name" />
-                        <ValidationMessage For="@(() => formModel.LastName)" />
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label>Email *</label>
-                    <InputText class="form-control" @bind-Value="formModel.Email" placeholder="email@example.com" />
-                    <ValidationMessage For="@(() => formModel.Email)" />
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Phone</label>
-                        <InputText class="form-control" @bind-Value="formModel.Phone" placeholder="+1-555-0000" />
-                    </div>
-                    <div class="form-group">
-                        <label>City</label>
-                        <InputText class="form-control" @bind-Value="formModel.City" placeholder="City" />
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Company</label>
-                        <InputSelect class="form-control" @bind-Value="formModel.CompanyId">
-                            <option value="">— None —</option>
-                            @foreach (var c in companies)
-                            {
-                                <option value="@c.Id">@c.Name</option>
-                            }
-                        </InputSelect>
-                    </div>
-                    <div class="form-group">
-                        <label>Customer Group</label>
-                        <InputSelect class="form-control" @bind-Value="formModel.CustomerGroupId">
-                            <option value="">— None —</option>
-                            @foreach (var g in groups)
-                            {
-                                <option value="@g.Id">@g.Name</option>
-                            }
-                        </InputSelect>
-                    </div>
-                </div>
-
-                @if (!string.IsNullOrEmpty(formError))
-                {
-                    <div class="alert alert-danger">@formError</div>
-                }
-
-                <!-- License Section -->
-                <div class="license-section">
-                    <div class="license-header">
-                        <h3>Licenses</h3>
-                        <button class="btn btn-primary" @onclick="ShowAddLicenseForm">+ Add New License</button>
-                    </div>
-                    @if (showAddLicenseForm)
+                <div class="customer-edit-main">
+                    @if (activeSection == CustomerSection)
                     {
-                        <div class="add-license-form">
-                            <EditForm Model="licenseForm" OnValidSubmit="SaveNewLicense" Context="licenseContext">
+                        <section class="section-card" id="customer-information">
+                            <div class="section-card-header">
+                                <h2>Customer Information</h2>
+                            </div>
+
+                            <EditForm Model="formModel" OnValidSubmit="SaveCustomer">
                                 <DataAnnotationsValidator />
 
                                 <div class="form-row">
                                     <div class="form-group">
-                                        <label>License Key *</label>
-                                        <InputNumber class="form-control" @bind-Value="licenseForm.LicenseKey" placeholder="e.g. 12345" />
-                                        <ValidationMessage For="@(() => licenseForm.LicenseKey)" />
+                                        <label>First Name *</label>
+                                        <InputText class="form-control" @bind-Value="formModel.FirstName" placeholder="First name" />
+                                        <ValidationMessage For="@(() => formModel.FirstName)" />
                                     </div>
                                     <div class="form-group">
-                                        <label>Program *</label>
-                                        <InputSelect class="form-control" @bind-Value="licenseForm.ProgramId">
-                                            <option value="0">— Select Program —</option>
-                                            @foreach (var p in programs)
+                                        <label>Last Name *</label>
+                                        <InputText class="form-control" @bind-Value="formModel.LastName" placeholder="Last name" />
+                                        <ValidationMessage For="@(() => formModel.LastName)" />
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Email *</label>
+                                    <InputText class="form-control" @bind-Value="formModel.Email" placeholder="email@example.com" />
+                                    <ValidationMessage For="@(() => formModel.Email)" />
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Phone</label>
+                                        <InputText class="form-control" @bind-Value="formModel.Phone" placeholder="+1-555-0000" />
+                                    </div>
+                                    <div class="form-group">
+                                        <label>City</label>
+                                        <InputText class="form-control" @bind-Value="formModel.City" placeholder="City" />
+                                    </div>
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Company</label>
+                                        <InputSelect class="form-control" @bind-Value="formModel.CompanyId">
+                                            <option value="">— None —</option>
+                                            @foreach (var c in companies)
                                             {
-                                                <option value="@p.Id">@p.Name (v@p.Version)</option>
+                                                <option value="@c.Id">@c.Name</option>
                                             }
                                         </InputSelect>
-                                        <ValidationMessage For="@(() => licenseForm.ProgramId)" />
-                                    </div>
-                                </div>
-
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label>Sub License Type *</label>
-                                        <InputSelect class="form-control" @bind-Value="licenseForm.SubLicenseType">
-                                            <option value="@LicenseType.TeamSize">Team size</option>
-                                            <option value="@LicenseType.QtyPurchase">Qty purchase</option>
-                                            <option value="@LicenseType.Seminar">Seminar</option>
-                                        </InputSelect>
                                     </div>
                                     <div class="form-group">
-                                        <label>Max Members</label>
-                                        <InputNumber class="form-control" @bind-Value="licenseForm.MaxMembers" />
-                                    </div>
-                                </div>
-
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label>Start Date *</label>
-                                        <InputDate class="form-control" @bind-Value="licenseForm.StartDate" />
-                                    </div>
-                                    <div class="form-group">
-                                        <label>Expiry Date *</label>
-                                        <InputDate class="form-control" @bind-Value="licenseForm.ExpiryDate" />
-                                    </div>
-                                </div>
-
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label>Status</label>
-                                        <InputSelect class="form-control" @bind-Value="licenseForm.Status">
-                                            <option value="Active">Active</option>
-                                            <option value="Expired">Expired</option>
-                                            <option value="Suspended">Suspended</option>
+                                        <label>Customer Group</label>
+                                        <InputSelect class="form-control" @bind-Value="formModel.CustomerGroupId">
+                                            <option value="">— None —</option>
+                                            @foreach (var g in groups)
+                                            {
+                                                <option value="@g.Id">@g.Name</option>
+                                            }
                                         </InputSelect>
                                     </div>
                                 </div>
 
-                                @if (!string.IsNullOrEmpty(licenseFormError))
+                                @if (!string.IsNullOrEmpty(formError))
                                 {
-                                    <div class="alert alert-danger">@licenseFormError</div>
+                                    <div class="alert alert-danger">@formError</div>
                                 }
 
                                 <div class="form-actions">
-                                    <button type="button" class="btn btn-secondary" @onclick="HideAddLicenseForm">Cancel</button>
-                                    <button type="submit" class="btn btn-primary" disabled="@isSavingLicense">Add License</button>
+                                    <button type="button" class="btn btn-secondary" @onclick="GoBack">Cancel</button>
+                                    <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                                        @(isSaving ? "Saving…" : "Save Changes")
+                                    </button>
                                 </div>
                             </EditForm>
-                        </div>
+                        </section>
                     }
-                    @if (customerLicenses.Count == 0)
-                    {
-                        <p class="no-licenses">No licenses assigned</p>
-                    }
-                    else
-                    {
-                        <div class="licenses-table">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>License Key</th>
-                                        <th>Program</th>
-                                        <th>Status</th>
-                                        <th>Role</th>
-                                        <th>Start Date</th>
-                                        <th>Expiry Date</th>
-                                        <th>Type</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var lic in customerLicenses)
-                                    {
-                                        <tr>
-                                            <td><strong>@lic.License.LicenseKey</strong></td>
-                                            <td>@lic.License.Program?.Name</td>
-                                            <td>
-                                                <span class="status-badge" data-status="@lic.License.Status">
-                                                    @lic.License.Status
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <span class="role-badge" data-role="@lic.Role">
-                                                    @lic.Role
-                                                </span>
-                                            </td>
-                                            <td>@lic.License.StartDate.ToString("yyyy-MM-dd")</td>
-                                            <td>@lic.License.ExpiryDate.ToString("yyyy-MM-dd")</td>
-                                            <td>@lic.License.SubLicenseType</td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
-                    }
-                </div>
 
-                <div class="form-actions">
-                    <button type="button" class="btn btn-secondary" @onclick="GoBack">Cancel</button>
-                    <button type="submit" class="btn btn-primary" disabled="@isSaving">
-                        @(isSaving ? "Saving…" : "Save Changes")
-                    </button>
+                    @if (activeSection == LicenseSection)
+                    {
+                        <section class="section-card" id="license-section">
+                            <div class="section-card-header">
+                                <h2>Licenses</h2>
+                                <button class="btn btn-primary" @onclick="ShowAddLicenseForm">+ Add New License</button>
+                            </div>
+
+                            @if (showAddLicenseForm)
+                            {
+                                <div class="add-license-form">
+                                    <EditForm Model="licenseForm" OnValidSubmit="SaveNewLicense" Context="licenseContext">
+                                        <DataAnnotationsValidator />
+
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label>License Key *</label>
+                                                <InputText class="form-control" @bind-Value="licenseForm.LicenseKey" placeholder="e.g. ABC123" />
+                                                <ValidationMessage For="@(() => licenseForm.LicenseKey)" />
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Program *</label>
+                                                <InputSelect class="form-control" @bind-Value="licenseForm.ProgramId">
+                                                    <option value="0">— Select Program —</option>
+                                                    @foreach (var p in programs)
+                                                    {
+                                                        <option value="@p.Id">@p.Name (v@p.Version)</option>
+                                                    }
+                                                </InputSelect>
+                                                <ValidationMessage For="@(() => licenseForm.ProgramId)" />
+                                            </div>
+                                        </div>
+
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label>Sub License Type *</label>
+                                                <InputSelect class="form-control" @bind-Value="licenseForm.SubLicenseType">
+                                                    <option value="@((int)LicenseType.TeamSize)">Team size</option>
+                                                    <option value="@((int)LicenseType.QtyPurchase)">Qty purchase</option>
+                                                    <option value="@((int)LicenseType.Seminar)">Seminar</option>
+                                                </InputSelect>
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Max Members</label>
+                                                <InputNumber class="form-control" @bind-Value="licenseForm.MaxMembers" />
+                                            </div>
+                                        </div>
+
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label>Start Date *</label>
+                                                <InputDate class="form-control" @bind-Value="licenseForm.StartDate" />
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Expiry Date *</label>
+                                                <InputDate class="form-control" @bind-Value="licenseForm.ExpiryDate" />
+                                            </div>
+                                        </div>
+
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label>Status</label>
+                                                <InputSelect class="form-control" @bind-Value="licenseForm.Status">
+                                                    <option value="Active">Active</option>
+                                                    <option value="Expired">Expired</option>
+                                                    <option value="Suspended">Suspended</option>
+                                                </InputSelect>
+                                            </div>
+                                        </div>
+
+                                        @if (!string.IsNullOrEmpty(licenseFormError))
+                                        {
+                                            <div class="alert alert-danger">@licenseFormError</div>
+                                        }
+
+                                        <div class="form-actions">
+                                            <button type="button" class="btn btn-secondary" @onclick="HideAddLicenseForm">Cancel</button>
+                                            <button type="submit" class="btn btn-primary" disabled="@isSavingLicense">Add License</button>
+                                        </div>
+                                    </EditForm>
+                                </div>
+                            }
+
+                            @if (customerLicenses.Count == 0)
+                            {
+                                <p class="no-licenses">No licenses assigned</p>
+                            }
+                            else
+                            {
+                                <div class="licenses-table">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>License Key</th>
+                                                <th>Program</th>
+                                                <th>Status</th>
+                                                <th>Role</th>
+                                                <th>Start Date</th>
+                                                <th>Expiry Date</th>
+                                                <th>Type</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var lic in customerLicenses)
+                                            {
+                                                <tr>
+                                                    <td><strong>@lic.License.LicenseKey</strong></td>
+                                                    <td>@lic.License.Program?.Name</td>
+                                                    <td>
+                                                        <span class="status-badge" data-status="@lic.License.Status">
+                                                            @lic.License.Status
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <span class="role-badge" data-role="@lic.Role">
+                                                            @lic.Role
+                                                        </span>
+                                                    </td>
+                                                    <td>@lic.License.StartDate.ToString("yyyy-MM-dd")</td>
+                                                    <td>@lic.License.ExpiryDate.ToString("yyyy-MM-dd")</td>
+                                                    <td>@lic.License.SubLicenseType</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                        </section>
+                    }
+
+                    }
                 </div>
-            </EditForm>
+            </div>
         </div>
     </div>
 }
@@ -244,8 +276,12 @@ else
     private string? formError;
     private CustomerFormModel formModel = new();
 
+    private const string CustomerSection = "customer";
+    private const string LicenseSection = "license";
+
     // License form
     private bool showAddLicenseForm;
+    private string activeSection = CustomerSection;
     private List<AppProgram> programs = new();
     private bool isSavingLicense;
     private string? licenseFormError;
@@ -384,6 +420,7 @@ else
 
     private void ShowAddLicenseForm()
     {
+        SetSection("license");
         showAddLicenseForm = true;
         licenseForm = new LicenseFormModel
         {
@@ -394,6 +431,15 @@ else
             Status = "Active",
             SubLicenseType = LicenseType.TeamSize
         };
+    }
+
+    private void SetSection(string section)
+    {
+        activeSection = section;
+        if (section != "license")
+        {
+            showAddLicenseForm = false;
+        }
     }
 
     private void HideAddLicenseForm()
@@ -464,7 +510,7 @@ else
     private sealed class LicenseFormModel
     {
         [System.ComponentModel.DataAnnotations.Required]
-        public int LicenseKey { get; set; }
+        public string LicenseKey { get; set; } = string.Empty;
 
         [System.ComponentModel.DataAnnotations.Required]
         [System.ComponentModel.DataAnnotations.Range(1, int.MaxValue, ErrorMessage = "Please select a program.")]
@@ -496,7 +542,20 @@ else
     .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1); }
     .page-header h1 { margin: 0; color: #333; font-size: 2rem; }
     .header-actions { display: flex; gap: .75rem; }
-    .edit-form-container { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1); max-width: 800px; margin: 0 auto; }
+    .edit-form-container { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1); max-width: 1200px; margin: 0 auto; }
+    .customer-edit-grid { display: grid; grid-template-columns: 280px 1fr; gap: 1.5rem; align-items: flex-start; }
+    .customer-edit-sidebar { display: flex; flex-direction: column; gap: 1rem; }
+    .sidebar-card { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 1rem 0.75rem 1rem; box-shadow: 0 1px 3px rgba(0,0,0,.04); }
+    .sidebar-title { font-size: .9rem; font-weight: 700; color: #111827; margin-bottom: .75rem; text-transform: uppercase; letter-spacing: .04em; }
+    .sidebar-item { width: 100%; text-align: left; background: transparent; border: none; padding: .9rem 1rem; margin-bottom: .4rem; color: #374151; font-size: .95rem; border-radius: 8px; cursor: pointer; transition: background .2s, color .2s; }
+    .sidebar-item:hover { background: #f3f4f6; }
+    .sidebar-item.active { background: #2563eb; color: white; }
+    .sidebar-divider { height: 1px; background: #e5e7eb; margin: .4rem 0; }
+    .customer-edit-main { display: flex; flex-direction: column; gap: 1.5rem; }
+    .section-card { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 1.5rem; }
+    .section-card-header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+    .section-card-header h2 { margin: 0; font-size: 1.4rem; color: #111827; }
+    .section-card h2 { margin: 0; }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
     .form-group { margin-bottom: 1rem; }
     .form-group label { display: block; font-weight: 500; color: #444; margin-bottom: .35rem; font-size: .9rem; }
@@ -511,7 +570,13 @@ else
     .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
     .alert-danger { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
     .alert-warning { background: #fff3cd; color: #856404; }
-    @@media (max-width: 600px) { .form-row { grid-template-columns: 1fr; } .page-header { flex-direction: column; gap: 1rem; } }
+    @@media (max-width: 900px) {
+        .customer-edit-grid { grid-template-columns: 1fr; }
+        .customer-edit-sidebar { order: 2; }
+        .customer-edit-main { order: 1; }
+        .form-row { grid-template-columns: 1fr; }
+        .page-header { flex-direction: column; gap: 1rem; }
+    }
 
     /* License Section Styles */
     .license-section { margin-top: 2.5rem; padding-top: 2rem; border-top: 2px solid #e0e0e0; }

@@ -55,8 +55,9 @@ else
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Phone</label>
+                        <label>Phone *</label>
                         <InputText class="form-control" @bind-Value="formModel.Phone" placeholder="+1-555-0000" />
+                        <ValidationMessage For="@(() => formModel.Phone)" />
                     </div>
                     <div class="form-group">
                         <label>City</label>
@@ -66,24 +67,26 @@ else
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Company</label>
+                        <label>Company *</label>
                         <InputSelect class="form-control" @bind-Value="formModel.CompanyId">
-                            <option value="">— None —</option>
+                            <option value="">— Select Company —</option>
                             @foreach (var c in companies)
                             {
                                 <option value="@c.Id">@c.Name</option>
                             }
                         </InputSelect>
+                        <ValidationMessage For="@(() => formModel.CompanyId)" />
                     </div>
                     <div class="form-group">
-                        <label>Customer Group</label>
+                        <label>Customer Group *</label>
                         <InputSelect class="form-control" @bind-Value="formModel.CustomerGroupId">
-                            <option value="">— None —</option>
+                            <option value="">— Select Group —</option>
                             @foreach (var g in groups)
                             {
                                 <option value="@g.Id">@g.Name</option>
                             }
                         </InputSelect>
+                        <ValidationMessage For="@(() => formModel.CustomerGroupId)" />
                     </div>
                 </div>
 
@@ -178,9 +181,17 @@ else
         [System.ComponentModel.DataAnnotations.EmailAddress]
         public string Email { get; set; } = string.Empty;
 
+        [System.ComponentModel.DataAnnotations.Required]
         public string? Phone { get; set; }
+
         public string? City { get; set; }
+
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.Range(1, int.MaxValue, ErrorMessage = "Please select a company.")]
         public int? CompanyId { get; set; }
+
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.Range(1, int.MaxValue, ErrorMessage = "Please select a customer group.")]
         public int? CustomerGroupId { get; set; }
     }
 }
