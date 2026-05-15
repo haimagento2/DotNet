@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 @using BlazorWebApp.Data
 @using BlazorWebApp.Models
+@using Microsoft.AspNetCore.Components
 @using Microsoft.EntityFrameworkCore
 @inject AuthenticationService AuthService
 @inject NavigationManager Navigation
@@ -22,8 +23,8 @@ else
                 <button class="btn btn-secondary" @onclick="ToggleFilters">
                     <span>Filter</span>
                 </button>
-                <button class="btn btn-success" @onclick="OpenAdd">+ Add License</button>
-                <button class="btn btn-secondary" @onclick="RefreshData">🔄 Refresh</button>
+                <a class="btn btn-success" href="/licenses/add">+ Add License</a>
+                <button type="button" class="btn btn-secondary" @onclick="RefreshData">🔄 Refresh</button>
                     <div class="columns-toggle">
                         <button class="btn btn-secondary" @onclick="ToggleColumnsMenu">Columns ▾</button>
                         @if (showColumnsMenu)
@@ -105,6 +106,7 @@ else
                             <option value="Active">Active</option>
                             <option value="Expired">Expired</option>
                             <option value="Suspended">Suspended</option>
+                            <option value="Cancel">Cancel</option>
                         </select>
                     </div>
                     <div class="filter-group">
@@ -131,21 +133,73 @@ else
         else
         {
             <div class="table-container">
+                <div class="table-toolbar">
+                    <div class="records-found">@totalRecords records found</div>
+                    <div class="bulk-actions">
+                        <button class="btn btn-secondary" @onclick="ToggleActionsMenu">Actions ▾</button>
+                        @if (showActionsMenu)
+                        {
+                            <div class="actions-dropdown">
+                                <button type="button" class="action-item" @onclick="MarkSelectedAsCancel">Mark selected Cancel</button>
+                                <button type="button" class="action-item" @onclick="ClearSelectedLicenses">Clear selection</button>
+                            </div>
+                        }
+                    </div>
+                </div>
                 <table class="data-table">
                     <thead>
                         <tr>
-                            @if (showIdColumn) { <th>ID</th> }
-                            @if (showLicenseKeyColumn) { <th>License Key</th> }
-                            @if (showProgramColumn) { <th>Program</th> }
-                            @if (showOwnerColumn) { <th>Owner</th> }
-                            @if (showCompanyColumn) { <th>Company</th> }
-                            @if (showCustomerGroupColumn) { <th>Customer Group</th> }
-                            @if (showTypeColumn) { <th>Type</th> }
-                            @if (showStatusColumn) { <th>Status</th> }
-                            @if (showMembersColumn) { <th>Members</th> }
-                            @if (showMaxColumn) { <th>Max</th> }
-                            @if (showStartColumn) { <th>Start Date</th> }
-                            @if (showExpiryColumn) { <th>Expiry Date</th> }
+                            <th class="checkbox-column">
+                                <input type="checkbox" checked="@IsAllPageSelected" @onchange="SetSelectAllPage" aria-label="Select all licenses" />
+                            </th>
+                            @if (showIdColumn)
+                            {
+                                <th><button type='button' class='sort-button' @onclick='() => SetSort("Id")'>ID <span class='sort-arrow'>@GetSortArrow("Id")</span></button></th>
+                            }
+                            @if (showLicenseKeyColumn)
+                            {
+                                <th><button type='button' class='sort-button' @onclick='() => SetSort("LicenseKey")'>License Key <span class='sort-arrow'>@GetSortArrow("LicenseKey")</span></button></th>
+                            }
+                            @if (showProgramColumn)
+                            {
+                                <th><button type='button' class='sort-button' @onclick='() => SetSort("Program")'>Program <span class='sort-arrow'>@GetSortArrow("Program")</span></button></th>
+                            }
+                            @if (showOwnerColumn)
+                            {
+                                <th><button type='button' class='sort-button' @onclick='() => SetSort("Owner")'>Owner <span class='sort-arrow'>@GetSortArrow("Owner")</span></button></th>
+                            }
+                            @if (showCompanyColumn)
+                            {
+                                <th><button type='button' class='sort-button' @onclick='() => SetSort("Company")'>Company <span class='sort-arrow'>@GetSortArrow("Company")</span></button></th>
+                            }
+                            @if (showCustomerGroupColumn)
+                            {
+                                <th><button type='button' class='sort-button' @onclick='() => SetSort("CustomerGroup")'>Customer Group <span class='sort-arrow'>@GetSortArrow("CustomerGroup")</span></button></th>
+                            }
+                            @if (showTypeColumn)
+                            {
+                                <th><button type='button' class='sort-button' @onclick='() => SetSort("Type")'>Type <span class='sort-arrow'>@GetSortArrow("Type")</span></button></th>
+                            }
+                            @if (showStatusColumn)
+                            {
+                                <th><button type='button' class='sort-button' @onclick='() => SetSort("Status")'>Status <span class='sort-arrow'>@GetSortArrow("Status")</span></button></th>
+                            }
+                            @if (showMembersColumn)
+                            {
+                                <th><button type='button' class='sort-button' @onclick='() => SetSort("Members")'>Members <span class='sort-arrow'>@GetSortArrow("Members")</span></button></th>
+                            }
+                            @if (showMaxColumn)
+                            {
+                                <th><button type='button' class='sort-button' @onclick='() => SetSort("Max")'>Max <span class='sort-arrow'>@GetSortArrow("Max")</span></button></th>
+                            }
+                            @if (showStartColumn)
+                            {
+                                <th><button type='button' class='sort-button' @onclick='() => SetSort("StartDate")'>Start Date <span class='sort-arrow'>@GetSortArrow("StartDate")</span></button></th>
+                            }
+                            @if (showExpiryColumn)
+                            {
+                                <th><button type='button' class='sort-button' @onclick='() => SetSort("ExpiryDate")'>Expiry Date <span class='sort-arrow'>@GetSortArrow("ExpiryDate")</span></button></th>
+                            }
                             @if (showActionsColumn) { <th>Actions</th> }
                         </tr>
                     </thead>
@@ -153,6 +207,9 @@ else
                         @foreach (var lic in licenses)
                         {
                             <tr>
+                                <td class="checkbox-column">
+                                    <input type="checkbox" checked="@selectedLicenseIds.Contains(lic.Id)" @onchange="args => ToggleLicenseSelection(lic.Id, args)" aria-label="Select license @lic.Id" />
+                                </td>
                                 @if (showIdColumn) { <td class="id-cell">@lic.Id</td> }
                                 @if (showLicenseKeyColumn) { <td class="key-cell">@lic.LicenseKey</td> }
                                 @if (showProgramColumn) { <td><span class="badge-program">@(lic.Program?.Name ?? "-")</span></td> }
@@ -177,7 +234,7 @@ else
                                 @if (showMaxColumn) { <td class="count-cell">@lic.MaxMembers</td> }
                                 @if (showStartColumn) { <td>@lic.StartDate.ToString("yyyy-MM-dd")</td> }
                                 @if (showExpiryColumn) { <td>@lic.ExpiryDate.ToString("yyyy-MM-dd")</td> }
-                                @if (showActionsColumn) { <td><button class="btn-edit" @onclick="() => OpenEdit(lic)">✏️ Edit</button></td> }
+                                @if (showActionsColumn) { <td><button type="button" class="btn-edit" @onclick="() => OpenEdit(lic.Id)">✏️ Edit</button></td> }
                             </tr>
                         }
                     </tbody>
@@ -241,23 +298,43 @@ else
                         </div>
                         <div class="form-group">
                             <label>Company</label>
-                            <InputSelect class="form-control" @bind-Value="form.CompanyId">
-                                <option value="">— None —</option>
-                                @foreach (var c in companies)
-                                {
-                                    <option value="@c.Id">@c.Name</option>
-                                }
-                            </InputSelect>
+                            @if (isEditing)
+                            {
+                                <div class="form-control" style="padding: .6rem .85rem; background: #f5f5f5; border: 1px solid #d0d0d0; border-radius: 5px; color: #666;">
+                                    @{var company = companies.FirstOrDefault(c => c.Id == form.CompanyId);}
+                                    @(company?.Name ?? "— None —")
+                                </div>
+                            }
+                            else
+                            {
+                                <InputSelect class="form-control" @bind-Value="form.CompanyId">
+                                    <option value="">— None —</option>
+                                    @foreach (var c in companies)
+                                    {
+                                        <option value="@c.Id">@c.Name</option>
+                                    }
+                                </InputSelect>
+                            }
                         </div>
                         <div class="form-group">
                             <label>Customer Group</label>
-                            <InputSelect class="form-control" @bind-Value="form.CustomerGroupId">
-                                <option value="">— None —</option>
-                                @foreach (var g in customerGroups)
-                                {
-                                    <option value="@g.Id">@g.Name</option>
-                                }
-                            </InputSelect>
+                            @if (isEditing)
+                            {
+                                <div class="form-control" style="padding: .6rem .85rem; background: #f5f5f5; border: 1px solid #d0d0d0; border-radius: 5px; color: #666;">
+                                    @{var group = customerGroups.FirstOrDefault(g => g.Id == form.CustomerGroupId);}
+                                    @(group?.Name ?? "— None —")
+                                </div>
+                            }
+                            else
+                            {
+                                <InputSelect class="form-control" @bind-Value="form.CustomerGroupId">
+                                    <option value="">— None —</option>
+                                    @foreach (var g in customerGroups)
+                                    {
+                                        <option value="@g.Id">@g.Name</option>
+                                    }
+                                </InputSelect>
+                            }
                         </div>
                         <div class="form-group">
                             <label>License Owner</label>
@@ -302,6 +379,7 @@ else
                                 <option value="Active">Active</option>
                                 <option value="Expired">Expired</option>
                                 <option value="Suspended">Suspended</option>
+                                <option value="Cancel">Cancel</option>
                             </InputSelect>
                         </div>
                     </div>
@@ -444,10 +522,12 @@ else
             if (value == 0)
             {
                 form.CustomerGroupId = null;
+                form.CompanyId = null;
                 return;
             }
             var owner = owners.FirstOrDefault(o => o.Id == value);
             form.CustomerGroupId = owner?.CustomerGroupId;
+            form.CompanyId = owner?.CompanyId;
         }
     }
     private int editingLicenseId;
@@ -457,6 +537,10 @@ else
     private int currentPage = 1;
     private int pageSize = 20;
     private int totalRecords = 0;
+    private string sortColumn = "Id";
+    private bool sortDescending;
+    private static readonly string SortAscIcon = "<svg viewBox='0 0 16 16' xmlns='http://www.w3.org/2000/svg'><path d='M8 4.5L3.5 9h9L8 4.5z' /></svg>";
+    private static readonly string SortDescIcon = "<svg viewBox='0 0 16 16' xmlns='http://www.w3.org/2000/svg'><path d='M8 11.5L3.5 7h9L8 11.5z' /></svg>";
 
     // Filters
     private int filterProgramId;
@@ -594,8 +678,25 @@ else
         }
 
         totalRecords = query.Count();
-        licenses = query
-            .OrderBy(l => l.LicenseKey)
+
+        var orderedQuery = sortColumn switch
+        {
+            "Id" => sortDescending ? query.OrderByDescending(l => l.Id) : query.OrderBy(l => l.Id),
+            "LicenseKey" => sortDescending ? query.OrderByDescending(l => l.LicenseKey) : query.OrderBy(l => l.LicenseKey),
+            "Program" => sortDescending ? query.OrderByDescending(l => l.Program!.Name) : query.OrderBy(l => l.Program!.Name),
+            "Owner" => sortDescending ? query.OrderByDescending(l => l.Owner!.FirstName).ThenByDescending(l => l.Owner!.LastName) : query.OrderBy(l => l.Owner!.FirstName).ThenBy(l => l.Owner!.LastName),
+            "Company" => sortDescending ? query.OrderByDescending(l => l.Owner!.Company!.Name) : query.OrderBy(l => l.Owner!.Company!.Name),
+            "CustomerGroup" => sortDescending ? query.OrderByDescending(l => l.Owner!.CustomerGroup!.Name) : query.OrderBy(l => l.Owner!.CustomerGroup!.Name),
+            "Type" => sortDescending ? query.OrderByDescending(l => l.SubLicenseType) : query.OrderBy(l => l.SubLicenseType),
+            "Status" => sortDescending ? query.OrderByDescending(l => l.Status) : query.OrderBy(l => l.Status),
+            "Members" => sortDescending ? query.OrderByDescending(l => l.Members.Count) : query.OrderBy(l => l.Members.Count),
+            "Max" => sortDescending ? query.OrderByDescending(l => l.MaxMembers) : query.OrderBy(l => l.MaxMembers),
+            "StartDate" => sortDescending ? query.OrderByDescending(l => l.StartDate) : query.OrderBy(l => l.StartDate),
+            "ExpiryDate" => sortDescending ? query.OrderByDescending(l => l.ExpiryDate) : query.OrderBy(l => l.ExpiryDate),
+            _ => sortDescending ? query.OrderByDescending(l => l.LicenseKey) : query.OrderBy(l => l.LicenseKey),
+        };
+
+        licenses = orderedQuery
             .Skip((currentPage - 1) * pageSize)
             .Take(pageSize)
             .ToList();
@@ -604,8 +705,7 @@ else
         if (currentPage > totalPages && totalPages > 0)
         {
             currentPage = totalPages;
-            licenses = query
-                .OrderBy(l => l.LicenseKey)
+            licenses = orderedQuery
                 .Skip((currentPage - 1) * pageSize)
                 .Take(pageSize)
                 .ToList();
@@ -649,28 +749,35 @@ else
 
     private void OpenAdd()
     {
-        isEditing = false;
-        form = new LicenseForm { StartDate = DateTime.Today, ExpiryDate = DateTime.Today.AddYears(1) };
-        formError = null;
-        successMessage = null;
-        showForm = true;
+        Navigation.NavigateTo("/licenses/add");
     }
 
-    private void OpenEdit(License l)
+    private void OpenEdit(int licenseId)
     {
-        editingLicenseId = l.Id;
-        form = new LicenseForm { LicenseKey = l.LicenseKey, ProgramId = l.ProgramId, CompanyId = l.CompanyId, CustomerGroupId = l.CustomerGroupId, OwnerId = l.OwnerId ?? 0, SubLicenseType = l.SubLicenseType, StartDate = l.StartDate, ExpiryDate = l.ExpiryDate, MaxMembers = l.MaxMembers, Status = l.Status };
-        editingMembers = DbContext.LicenseMembers
-            .Include(m => m.Customer).ThenInclude(c => c!.Company)
-            .Include(m => m.Customer).ThenInclude(c => c!.CustomerGroup)
-            .Where(m => m.LicenseId == l.Id).ToList();
-        allCustomers = DbContext.Customers
-            .Include(c => c.Company)
-            .Include(c => c.CustomerGroup)
-            .Where(c => (l.CompanyId.HasValue && c.CompanyId == l.CompanyId) || (l.CustomerGroupId.HasValue && c.CustomerGroupId == l.CustomerGroupId))
-            .OrderBy(c => c.FirstName).ToList();
-        customerSearch = string.Empty; selectedCustomerIds = new(); memberError = null;
-        isEditing = true; formError = null; successMessage = null; showForm = true;
+        Navigation.NavigateTo($"/licenses/edit/{licenseId}");
+    }
+
+    private void SetSort(string column)
+    {
+        if (sortColumn == column)
+        {
+            sortDescending = !sortDescending;
+        }
+        else
+        {
+            sortColumn = column;
+            sortDescending = false;
+        }
+
+        currentPage = 1;
+        Load();
+        StateHasChanged();
+    }
+
+    private MarkupString GetSortArrow(string column)
+    {
+        if (sortColumn != column) return new MarkupString(string.Empty);
+        return new MarkupString(sortDescending ? SortDescIcon : SortAscIcon);
     }
 
     private void CloseForm() 
@@ -855,6 +962,10 @@ else
     .data-table { width: 100%; border-collapse: collapse; font-size: .88rem; }
     .data-table thead { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
     .data-table th { padding: .9rem 1rem; text-align: left; font-weight: 600; white-space: nowrap; }
+    .sort-button { display: inline-flex; align-items: center; gap: .25rem; padding: 0; border: none; background: none; color: inherit; font: inherit; cursor: pointer; }
+    .sort-button:hover { text-decoration: underline; }
+    .sort-arrow { display: inline-flex; align-items: center; justify-content: center; width: 1em; height: 1em; }
+    .sort-arrow svg { width: .9rem; height: .9rem; fill: currentColor; }
     .data-table td { padding: .8rem 1rem; border-bottom: 1px solid #e0e0e0; color: #555; }
     .data-table tbody tr:hover { background: #f9f9f9; }
     .id-cell { font-weight: 600; color: #667eea; }
@@ -865,6 +976,7 @@ else
     .badge-status.active    { background: #d4edda; color: #155724; }
     .badge-status.expired   { background: #f8d7da; color: #721c24; }
     .badge-status.suspended { background: #fff3cd; color: #856404; }
+    .badge-status.cancel    { background: #e2e3e5; color: #6c757d; }
     .btn-edit { background: #fff3cd; color: #856404; border: 1px solid #ffc107; padding: .3rem .75rem; border-radius: 4px; cursor: pointer; font-size: .82rem; }
     .btn-edit:hover { background: #ffc107; color: #fff; }
     .stats { background: white; padding: 1.25rem 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1); }

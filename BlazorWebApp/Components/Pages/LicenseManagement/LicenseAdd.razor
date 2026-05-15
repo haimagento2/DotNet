@@ -1,0 +1,279 @@
+@page "/licenses/add"
+@rendermode InteractiveServer
+@using BlazorWebApp.Data
+@using BlazorWebApp.Models
+@using Microsoft.EntityFrameworkCore
+@inject AuthenticationService AuthService
+@inject NavigationManager Navigation
+@inject ApplicationDbContext DbContext
+
+<PageTitle>Add New License</PageTitle>
+
+@if (!AuthService.IsAuthenticated())
+{
+    <div class="alert alert-warning">You are not authorized. Please <a href="/login">login</a> first.</div>
+}
+else
+{
+    <div class="license-form-page">
+        <div class="page-header">
+            <h1>Add New License</h1>
+            <button class="btn btn-secondary" @onclick="GoBack">← Back to Licenses</button>
+        </div>
+
+        @if (!string.IsNullOrEmpty(successMessage))
+        {
+            <div class="alert alert-success">@successMessage</div>
+        }
+
+        <div class="form-panel">
+            <EditForm Model="form" OnValidSubmit="SaveLicense">
+                <DataAnnotationsValidator />
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>License Key *</label>
+                        <InputText class="form-control" @bind-Value="form.LicenseKey" placeholder="e.g. ABC123" />
+                        <ValidationMessage For="@(() => form.LicenseKey)" />
+                    </div>
+                    <div class="form-group">
+                        <label>Program *</label>
+                        <InputSelect class="form-control" @bind-Value="form.ProgramId">
+                            <option value="0">— Select Program —</option>
+                            @foreach (var p in programs)
+                            {
+                                <option value="@p.Id">@p.Name (v@p.Version)</option>
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="@(() => form.ProgramId)" />
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Owner *</label>
+                        <InputSelect class="form-control" @bind-Value="SelectedOwnerId">
+                            <option value="0">— Select Owner —</option>
+                            @foreach (var c in owners)
+                            {
+                                <option value="@c.Id">#@c.Id — @c.FirstName @c.LastName — @c.Email</option>
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="@(() => form.OwnerId)" />
+                    </div>
+                    <div class="form-group">
+                        <label>Company</label>
+                        <div class="form-control" style="padding: .7rem .9rem; background: #f5f5f5; border: 1px solid #d0d0d0; border-radius: 6px; color: #666;">
+                            @{var company = companies.FirstOrDefault(c => c.Id == form.CompanyId);}
+                            @(company?.Name ?? "— None —")
+                        </div>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Customer Group</label>
+                        <div class="form-control" style="padding: .7rem .9rem; background: #f5f5f5; border: 1px solid #d0d0d0; border-radius: 6px; color: #666;">
+                            @{var group = customerGroups.FirstOrDefault(g => g.Id == form.CustomerGroupId);}
+                            @(group?.Name ?? "— None —")
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>License Type</label>
+                        <InputSelect class="form-control" @bind-Value="form.SubLicenseType">
+                            <option value="@((int)LicenseType.TeamSize)">Team size</option>
+                            <option value="@((int)LicenseType.QtyPurchase)">Qty purchase</option>
+                            <option value="@((int)LicenseType.Seminar)">Seminar</option>
+                        </InputSelect>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Start Date *</label>
+                        <InputDate class="form-control" @bind-Value="form.StartDate" />
+                    </div>
+                    <div class="form-group">
+                        <label>Expiry Date *</label>
+                        <InputDate class="form-control" @bind-Value="form.ExpiryDate" />
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Max Members</label>
+                        <InputNumber class="form-control" @bind-Value="form.MaxMembers" />
+                    </div>
+                    <div class="form-group">
+                        <label>Status</label>
+                        <InputSelect class="form-control" @bind-Value="form.Status">
+                            <option value="Active">Active</option>
+                            <option value="Expired">Expired</option>
+                            <option value="Suspended">Suspended</option>
+                            <option value="Cancel">Cancel</option>
+                        </InputSelect>
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(formError))
+                {
+                    <div class="alert alert-danger">@formError</div>
+                }
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" @onclick="GoBack">Cancel</button>
+                    <button type="submit" class="btn btn-primary" disabled="@isSaving">@(isSaving ? "Saving…" : "Add License")</button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+}
+
+@code {
+    private LicenseForm form = new() { StartDate = DateTime.Today, ExpiryDate = DateTime.Today.AddYears(1) };
+    private List<AppProgram> programs = new();
+    private List<Company> companies = new();
+    private List<CustomerGroup> customerGroups = new();
+    private List<Customer> owners = new();
+    private bool isSaving;
+    private string? successMessage;
+    private string? formError;
+
+    protected override void OnInitialized()
+    {
+        if (!AuthService.IsAuthenticated())
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        LoadLookupData();
+    }
+
+    private void LoadLookupData()
+    {
+        programs = DbContext.Programs.OrderBy(p => p.Name).ToList();
+        companies = DbContext.Companies.OrderBy(c => c.Name).ToList();
+        customerGroups = DbContext.CustomerGroups.OrderBy(g => g.Name).ToList();
+        owners = DbContext.Customers.OrderBy(c => c.Id).ToList();
+    }
+
+    private int SelectedOwnerId
+    {
+        get => form.OwnerId;
+        set
+        {
+            form.OwnerId = value;
+            if (value == 0)
+            {
+                form.CustomerGroupId = null;
+                form.CompanyId = null;
+                return;
+            }
+
+            var owner = owners.FirstOrDefault(o => o.Id == value);
+            form.CustomerGroupId = owner?.CustomerGroupId;
+            form.CompanyId = owner?.CompanyId;
+        }
+    }
+
+    private void GoBack() => Navigation.NavigateTo("/licenses");
+
+    private void SaveLicense()
+    {
+        formError = null;
+        if (form.ProgramId == 0)
+        {
+            formError = "Please select a program.";
+            return;
+        }
+        if (form.OwnerId == 0)
+        {
+            formError = "Please select a license owner.";
+            return;
+        }
+
+        try
+        {
+            isSaving = true;
+            var license = new License
+            {
+                LicenseKey = form.LicenseKey,
+                ProgramId = form.ProgramId,
+                CompanyId = form.CompanyId,
+                CustomerGroupId = form.CustomerGroupId,
+                OwnerId = form.OwnerId == 0 ? null : form.OwnerId,
+                SubLicenseType = form.SubLicenseType,
+                StartDate = form.StartDate,
+                ExpiryDate = form.ExpiryDate,
+                MaxMembers = form.MaxMembers,
+                Status = form.Status,
+                CreatedAt = DateTime.Now
+            };
+
+            DbContext.Licenses.Add(license);
+            DbContext.SaveChanges();
+
+            if (license.OwnerId.HasValue)
+            {
+                DbContext.LicenseMembers.Add(new LicenseMember
+                {
+                    LicenseId = license.Id,
+                    CustomerId = license.OwnerId.Value,
+                    OwnerId = license.OwnerId.Value,
+                    Permission = 1,
+                    AssignedAt = DateTime.Today,
+                    CreatedAt = DateTime.Now
+                });
+                DbContext.SaveChanges();
+            }
+
+            Navigation.NavigateTo("/licenses");
+        }
+        catch (Exception ex)
+        {
+            formError = ex.InnerException is not null
+                ? $"Error: {ex.Message} - {ex.InnerException.Message}"
+                : $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private sealed class LicenseForm
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        public string LicenseKey { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.Range(1, int.MaxValue, ErrorMessage = "Please select a program.")]
+        public int ProgramId { get; set; }
+
+        public int OwnerId { get; set; }
+        public int? CompanyId { get; set; }
+        public int? CustomerGroupId { get; set; }
+        public LicenseType SubLicenseType { get; set; } = LicenseType.TeamSize;
+        public DateTime StartDate { get; set; } = DateTime.Today;
+        public DateTime ExpiryDate { get; set; } = DateTime.Today.AddYears(1);
+        public int MaxMembers { get; set; } = 5;
+        public string Status { get; set; } = "Active";
+    }
+}
+
+<style>
+    .license-form-page { padding: 2rem; background: #f5f5f5; min-height: 100vh; }
+    .page-header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1.5rem; background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1); }
+    .page-header h1 { margin: 0; font-size: 2rem; color: #333; }
+    .form-panel { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1); }
+    .form-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; margin-bottom: .35rem; font-weight: 600; color: #444; }
+    .form-control { width: 100%; padding: .7rem .9rem; border: 1px solid #d0d0d0; border-radius: 6px; font-size: .95rem; }
+    .form-actions { display: flex; justify-content: flex-end; gap: .75rem; margin-top: 1rem; }
+    .btn { border: none; padding: .65rem 1.25rem; border-radius: 6px; cursor: pointer; font-weight: 600; }
+    .btn-primary { background: #667eea; color: white; }
+    .btn-secondary { background: #6c757d; color: white; }
+    .alert { padding: 1rem 1.25rem; border-radius: 8px; margin-bottom: 1rem; }
+    .alert-success { background: #d4edda; color: #155724; }
+    .alert-danger { background: #f8d7da; color: #721c24; }
+</style>
