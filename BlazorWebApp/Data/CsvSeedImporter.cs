@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Linq;
 using BlazorWebApp.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace BlazorWebApp.Data
 {
@@ -12,7 +13,18 @@ namespace BlazorWebApp.Data
             {
                 throw new DirectoryNotFoundException($"Seed folder not found: {seedFolder}");
             }
-
+            if (force)
+            {
+                // When forcing import, remove existing seeded data in a safe order
+                // to avoid UNIQUE constraint violations on explicit Id inserts.
+                dbContext.Database.ExecuteSqlRaw("DELETE FROM \"LicenseMembers\"");
+                dbContext.Database.ExecuteSqlRaw("DELETE FROM \"Licenses\"");
+                dbContext.Database.ExecuteSqlRaw("DELETE FROM \"Customers\"");
+                dbContext.Database.ExecuteSqlRaw("DELETE FROM \"Programs\"");
+                dbContext.Database.ExecuteSqlRaw("DELETE FROM \"Companies\"");
+                dbContext.Database.ExecuteSqlRaw("DELETE FROM \"CustomerGroups\"");
+                dbContext.Database.ExecuteSqlRaw("DELETE FROM \"Admins\"");
+            }
             if (force || !dbContext.CustomerGroups.Any())
             {
                 dbContext.CustomerGroups.AddRange(ReadCustomerGroups(Path.Combine(seedFolder, "CustomerGroups.csv")));

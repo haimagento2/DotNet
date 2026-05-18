@@ -135,16 +135,39 @@ else
             <div class="table-container">
                 <div class="table-toolbar">
                     <div class="records-found">@totalRecords records found</div>
-                    <div class="bulk-actions">
-                        <button class="btn btn-secondary" @onclick="ToggleActionsMenu">Actions ▾</button>
-                        @if (showActionsMenu)
-                        {
-                            <div class="actions-dropdown">
-                                <button type="button" class="action-item" @onclick="MarkSelectedAsCancel">Mark selected Cancel</button>
-                                <button type="button" class="action-item" @onclick="ClearSelectedLicenses">Clear selection</button>
+                </div>
+                <div class="bulk-actions">
+                    <button class="btn btn-secondary" @onclick="ToggleActionsMenu">Update Status ▾</button>
+                    @if (showActionsMenu)
+                    {
+                        <div class="actions-dropdown">
+                                <button type="button" class="action-item action-item--active" @onclick="MarkSelectedAsActive">
+                                    <span class="action-icon">
+                                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='7' fill='%23155c32'/%3E%3Cpath d='M5 8l2 2 4-4' fill='none' stroke='%23fff' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" alt="Activate" />
+                                    </span>
+                                    <span>Activate</span>
+                                </button>
+                                <button type="button" class="action-item action-item--suspend" @onclick="MarkSelectedAsSuspend">
+                                    <span class="action-icon">
+                                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='7' fill='%23d39e00'/%3E%3Crect x='5' y='4' width='2' height='8' fill='%23fff'/%3E%3Crect x='9' y='4' width='2' height='8' fill='%23fff'/%3E%3C/svg%3E" alt="Suspend" />
+                                    </span>
+                                    <span>Suspend</span>
+                                </button>
+                                <button type="button" class="action-item action-item--cancel" @onclick="MarkSelectedAsCancel">
+                                    <span class="action-icon">
+                                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='7' fill='%23c82333'/%3E%3Cpath d='M5 5l6 6M11 5l-6 6' fill='none' stroke='%23fff' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E" alt="Cancel" />
+                                    </span>
+                                    <span>Cancel</span>
+                                </button>
+                                <div class="actions-divider"></div>
+                                <button type="button" class="action-item action-item--clear" @onclick="ClearSelectedLicenses">
+                                    <span class="action-icon">
+                                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2 4.5h12' stroke='%23444' stroke-width='1.5' stroke-linecap='round'/%3E%3Cpath d='M5 4.5v7a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-7' fill='none' stroke='%23444' stroke-width='1.5' stroke-linecap='round'/%3E%3Cpath d='M6 4.5V3.5h4v1' stroke='%23444' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E" alt="Clear" />
+                                    </span>
+                                    <span>Clear selection</span>
+                                </button>
                             </div>
                         }
-                    </div>
                 </div>
                 <table class="data-table">
                     <thead>
@@ -511,6 +534,8 @@ else
     private bool showStartColumn = true;
     private bool showExpiryColumn = true;
     private bool showActionsColumn = true;
+    private bool showActionsMenu;
+    private HashSet<int> selectedLicenseIds = new();
     private string? successMessage, formError, memberError;
     private LicenseForm form = new();
     private int SelectedOwnerId
@@ -603,6 +628,84 @@ else
     private void ToggleColumnsMenu()
     {
         showColumnsMenu = !showColumnsMenu;
+    }
+
+    private void ToggleActionsMenu()
+    {
+        showActionsMenu = !showActionsMenu;
+    }
+
+    private void MarkSelectedAsActive()
+    {
+        UpdateSelectedLicensesStatus("Active");
+    }
+
+    private void MarkSelectedAsSuspend()
+    {
+        UpdateSelectedLicensesStatus("Suspended");
+    }
+
+    private void MarkSelectedAsCancel()
+    {
+        UpdateSelectedLicensesStatus("Cancel");
+    }
+
+    private void UpdateSelectedLicensesStatus(string status)
+    {
+        if (licenses == null || selectedLicenseIds.Count == 0) return;
+
+        var selected = DbContext.Licenses.Where(l => selectedLicenseIds.Contains(l.Id)).ToList();
+        foreach (var license in selected)
+        {
+            license.Status = status;
+            DbContext.Licenses.Update(license);
+        }
+
+        DbContext.SaveChanges();
+        selectedLicenseIds.Clear();
+        showActionsMenu = false;
+        Load();
+    }
+
+    private void ClearSelectedLicenses()
+    {
+        selectedLicenseIds.Clear();
+        showActionsMenu = false;
+    }
+
+    private bool IsAllPageSelected => licenses != null && licenses.Count > 0 && licenses.All(l => selectedLicenseIds.Contains(l.Id));
+
+    private void SetSelectAllPage(ChangeEventArgs args)
+    {
+        if (licenses == null) return;
+
+        var isChecked = args.Value is bool value && value;
+        if (isChecked)
+        {
+            foreach (var license in licenses)
+            {
+                selectedLicenseIds.Add(license.Id);
+            }
+        }
+        else
+        {
+            foreach (var license in licenses)
+            {
+                selectedLicenseIds.Remove(license.Id);
+            }
+        }
+    }
+
+    private void ToggleLicenseSelection(int licenseId, ChangeEventArgs args)
+    {
+        if (args.Value is bool isChecked && isChecked)
+        {
+            selectedLicenseIds.Add(licenseId);
+        }
+        else
+        {
+            selectedLicenseIds.Remove(licenseId);
+        }
     }
 
     private void ToggleFilters()
@@ -944,10 +1047,40 @@ else
     .filter-input-search::placeholder { color: #999; }
     .btn-filter-clear { padding: .6rem 1rem; width: 100%; }
 
-    .columns-toggle { position: relative; }
+    .table-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 1rem 1.25rem; border-bottom: 1px solid #e9ecef; background: #fbfbff; border-top-left-radius: 8px; border-top-right-radius: 8px; }
+    .records-found { color: #343a40; font-weight: 700; }
+    .bulk-actions { position: relative; padding: 0 1.25rem 1rem; }
+    .bulk-actions .btn-secondary { background: #4f5d8a; border-radius: 8px; padding: .65rem 1.1rem; min-width: 130px; }
+    .bulk-actions .btn-secondary:hover { background: #3f4b70; }
+    .actions-dropdown { position: absolute; left: 0; top: calc(100% + .5rem); background: white; border: 1px solid #d0d0d0; border-radius: 12px; box-shadow: 0 18px 30px rgba(25,40,85,.14); padding: .65rem; display: grid; gap: .35rem; min-width: 240px; z-index: 9999; }
+    .action-item { display: inline-flex; align-items: center; gap: .65rem; width: 100%; padding: .75rem .95rem; border: none; border-radius: 10px; background: #f8f9ff; color: #32325d; text-align: left; font-size: .93rem; cursor: pointer; transition: transform .15s, background .2s, color .2s; }
+    .action-item:hover { background: #eef2ff; transform: translateX(1px); }
+    .action-item span:last-child { display: inline-block; flex: 1; }
+    .action-icon { display: inline-flex; align-items: center; justify-content: center; width: 1.35rem; height: 1.35rem; font-size: 1rem; }
+    .action-icon img { width: 1rem; height: 1rem; display: block; }
+    .action-item--active { color: #155724; }
+    .action-item--suspend { color: #856404; }
+    .action-item--cancel { color: #721c24; }
+    .action-item--clear { color: #4a4a4a; }
+    .action-item--clear:hover { background: #f4f5f7; }
+    .actions-divider { border-top: 1px solid #e7e7e7; margin: .35rem 0; }
+    .table-container { background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1); overflow-x: auto; overflow-y: visible; margin-bottom: 1.5rem; }
     .columns-dropdown { position: absolute; right: 0; top: calc(100% + .5rem); background: white; border: 1px solid #d0d0d0; border-radius: 8px; box-shadow: 0 8px 20px rgba(0,0,0,.12); padding: .75rem; display: grid; gap: .5rem; min-width: 180px; z-index: 10; }
     .columns-dropdown label { display: flex; align-items: center; gap: .5rem; font-size: .88rem; color: #333; cursor: pointer; }
     .columns-dropdown input[type="checkbox"] { accent-color: #667eea; width: 16px; height: 16px; }
+    .actions-dropdown { position: absolute; left: 0; top: calc(100% + .5rem); background: white; border: 1px solid #d0d0d0; border-radius: 10px; box-shadow: 0 12px 24px rgba(0,0,0,.14); padding: .5rem; display: grid; gap: .4rem; min-width: 220px; z-index: 9999; }
+    .bulk-actions { position: relative; }
+    .table-container { background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,.1); overflow-x: auto; overflow-y: visible; margin-bottom: 1.5rem; }
+    .action-item { display: inline-flex; align-items: center; gap: .65rem; width: 100%; padding: .65rem .9rem; border: none; border-radius: 8px; background: white; color: #333; text-align: left; font-size: .92rem; cursor: pointer; transition: background .2s, color .2s; }
+    .action-item:hover { background: #f5f7ff; }
+    .action-icon { display: inline-flex; align-items: center; justify-content: center; width: 1.35rem; height: 1.35rem; font-size: 1rem; }
+    .action-icon img { width: 1rem; height: 1rem; display: block; }
+    .action-item--active { color: #155724; }
+    .action-item--suspend { color: #856404; }
+    .action-item--cancel { color: #721c24; }
+    .action-item--clear { color: #444; }
+    .action-item--clear:hover { background: #f8f9fa; }
+    .actions-divider { border-top: 1px solid #e7e7e7; margin: .25rem 0; }
     .btn { border: none; padding: .65rem 1.25rem; border-radius: 4px; cursor: pointer; font-weight: 500; font-size: .9rem; transition: opacity .2s; }
     .btn:hover { opacity: .85; }
     .btn-primary { background: #667eea; color: white; }
