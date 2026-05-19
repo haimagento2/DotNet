@@ -94,6 +94,14 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9Ob3RGb3VuZC5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
+[/home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/Components/Pages/SystemArea/ExportCsv.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9TeXN0ZW1BcmVhL0V4cG9ydENzdi5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/Components/Pages/SystemArea/ImportCsv.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9TeXN0ZW1BcmVhL0ltcG9ydENzdi5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
 [/home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/Components/Pages/Weather.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9XZWF0aGVyLnJhem9y
 build_metadata.AdditionalFiles.CssScope = 

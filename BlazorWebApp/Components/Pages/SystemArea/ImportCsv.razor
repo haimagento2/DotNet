@@ -1,0 +1,82 @@
+@page "/system/import"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Components.Forms
+@using System.IO
+@inject AuthenticationService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Import CSV</PageTitle>
+
+@if (!AuthService.IsAuthenticated())
+{
+    <div class="alert alert-warning">You are not authorized. Please <a href="/login">login</a> first.</div>
+}
+else
+{
+    <div class="page-container">
+        <div class="page-header">
+            <h1>Import CSV</h1>
+        </div>
+
+        <div class="card p-4 bg-white rounded shadow-sm">
+            <p>Upload a CSV file and click Import to process the data.</p>
+
+            <div class="form-group">
+                <label for="importType">Import Type</label>
+                <InputSelect id="importType" class="form-control" @bind-Value="selectedImportType">
+                    <option value="">Select import type</option>
+                    <option value="Customer">Customer</option>
+                    <option value="License">License</option>
+                </InputSelect>
+            </div>
+
+            <div class="form-group">
+                <InputFile id="csvFile" OnChange="OnFileSelected" accept=".csv" />
+            </div>
+
+            <div class="form-group mt-3">
+                <button class="btn btn-primary" @onclick="ImportCsvFile" disabled="@(!CanImport)">Import CSV</button>
+            </div>
+
+            @if (!string.IsNullOrEmpty(statusMessage))
+            {
+                <div class="alert alert-info mt-3">@statusMessage</div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private string selectedImportType = string.Empty;
+    private IBrowserFile? selectedFile;
+    private string? statusMessage;
+
+    private bool CanImport => selectedFile != null && !string.IsNullOrWhiteSpace(selectedImportType);
+
+    private void OnFileSelected(InputFileChangeEventArgs e)
+    {
+        selectedFile = e.File;
+        statusMessage = null;
+    }
+
+    private async Task ImportCsvFile()
+    {
+        if (selectedFile == null)
+        {
+            statusMessage = "Please choose a CSV file first.";
+            return;
+        }
+
+        try
+        {
+            using var stream = selectedFile.OpenReadStream(maxAllowedSize: 20 * 1024 * 1024);
+            using var reader = new StreamReader(stream);
+            var contents = await reader.ReadToEndAsync();
+            statusMessage = $"File '{selectedFile.Name}' for {selectedImportType} loaded successfully ({selectedFile.Size} bytes).";
+        }
+        catch (Exception ex)
+        {
+            statusMessage = $"Import failed: {ex.Message}";
+        }
+    }
+}
