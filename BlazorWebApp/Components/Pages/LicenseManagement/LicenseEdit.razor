@@ -88,12 +88,16 @@ else
                         </InputSelect>
                     </div>
                     <div class="form-group">
-                        <label>License Type</label>
+                        <label>SubLicense Type</label>
                         <InputSelect class="form-control" @bind-Value="form.SubLicenseType">
-                            <option value="@((int)LicenseType.TeamSize)">Team size</option>
-                            <option value="@((int)LicenseType.QtyPurchase)">Qty purchase</option>
-                            <option value="@((int)LicenseType.Seminar)">Seminar</option>
+                            <option value="@LicenseType.TeamSize">Team size</option>
+                            <option value="@LicenseType.QtyPurchase">Qty purchase</option>
+                            <option value="@LicenseType.Seminar">Seminar</option>
                         </InputSelect>
+                        @if (form.SubLicenseType == LicenseType.Seminar)
+                        {
+                            <small class="form-text text-muted">Seminar licenses can be assigned to all company members regardless of Max Members.</small>
+                        }
                     </div>
                 </div>
 
@@ -145,8 +149,8 @@ else
                     <div class="members-section">
                         <div class="members-header">
                             <span class="members-title">License Members</span>
-                            <span class="members-count @(editingMembers.Count >= form.MaxMembers ? "full" : "")">
-                                @editingMembers.Count / @form.MaxMembers
+                            <span class="members-count @((IsUnlimitedLicense) ? "" : (form.MaxMembers > 0 && editingMembers.Count >= form.MaxMembers ? "full" : ""))">
+                                @editingMembers.Count @((IsUnlimitedLicense) ? "/ All" : $"/ {form.MaxMembers}")
                             </span>
                         </div>
                         <div class="share-summary">
@@ -213,7 +217,7 @@ else
                             <div class="picker-footer">
                                 <span class="picker-count">@selectedCustomerIds.Count selected</span>
                                 <button type="button" class="btn btn-success btn-sm" @onclick="AddSelectedMembers"
-                                        disabled="@(selectedCustomerIds.Count == 0 || editingMembers.Count >= form.MaxMembers)">
+                                        disabled="@(selectedCustomerIds.Count == 0 || (!IsUnlimitedLicense && form.MaxMembers > 0 && editingMembers.Count >= form.MaxMembers))">
                                     + Add Selected (@selectedCustomerIds.Count)
                                 </button>
                             </div>
@@ -268,6 +272,7 @@ else
                     c.City.Contains(customerSearch, StringComparison.OrdinalIgnoreCase));
 
     private int shareableCustomerCount => allCustomers.Count;
+    private bool IsUnlimitedLicense => form.SubLicenseType == LicenseType.Seminar || form.MaxMembers == 0;
     private string shareableScope => form.CompanyId.HasValue
         ? $"Company: {companies.FirstOrDefault(c => c.Id == form.CompanyId)?.Name ?? "Unknown"}"
         : form.CustomerGroupId.HasValue
@@ -381,7 +386,7 @@ else
         memberError = null;
         try
         {
-            if (license != null && license.SubLicenseType != LicenseType.Seminar && editingMembers.Count + selectedCustomerIds.Count > license.MaxMembers)
+            if (license != null && license.SubLicenseType != LicenseType.Seminar && license.MaxMembers > 0 && editingMembers.Count + selectedCustomerIds.Count > license.MaxMembers)
             {
                 memberError = $"This license only supports {license.MaxMembers} members.";
                 return;

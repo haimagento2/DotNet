@@ -39,80 +39,82 @@
                 </NavLink>
             </div>
 
-            <div class="nav-section-label">System</div>
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="/system/import">
-                    <span class="bi bi-upload" aria-hidden="true"></span> Import
-                </NavLink>
-            </div>
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="/system/export">
-                    <span class="bi bi-download" aria-hidden="true"></span> Export
-                </NavLink>
+            <div class="nav-section-label" @onclick="() => customerExpanded = !customerExpanded">
+                <span class="chevron @(customerExpanded ? "expanded" : "")">›</span> Customer
             </div>
 
-            <div class="nav-section-label">Customer</div>
+            @if (customerExpanded)
+            {
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="customers">
+                        <span class="bi bi-people-fill" aria-hidden="true"></span> Customers
+                    </NavLink>
+                </div>
 
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="customers">
-                    <span class="bi bi-people-fill" aria-hidden="true"></span> Customers
-                </NavLink>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="customer-groups">
+                        <span class="bi bi-collection-fill" aria-hidden="true"></span> Customer Groups
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="companies">
+                        <span class="bi bi-building" aria-hidden="true"></span> Companies
+                    </NavLink>
+                </div>
+            }
+
+            <div class="nav-section-label" @onclick="() => licenseExpanded = !licenseExpanded">
+                <span class="chevron @(licenseExpanded ? "expanded" : "")">›</span> License Management
             </div>
 
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="customer-groups">
-                    <span class="bi bi-collection-fill" aria-hidden="true"></span> Customer Groups
-                </NavLink>
+            @if (licenseExpanded)
+            {
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="programs">
+                        <span class="bi bi-grid-fill" aria-hidden="true"></span> Programs
+                    </NavLink>
+                </div>
+            
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="licenses">
+                        <span class="bi bi-key-fill" aria-hidden="true"></span> Licenses
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="license-members">
+                        <span class="bi bi-person-badge-fill" aria-hidden="true"></span> License Members
+                    </NavLink>
+                </div>
+            }
+
+            <div class="nav-section-label" @onclick="() => systemExpanded = !systemExpanded">
+                <span class="chevron @(systemExpanded ? "expanded" : "")">›</span> System
             </div>
 
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="companies">
-                    <span class="bi bi-building" aria-hidden="true"></span> Companies
-                </NavLink>
-            </div>
-
-            <div class="nav-section-label">License Management</div>
-
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="programs">
-                    <span class="bi bi-grid-fill" aria-hidden="true"></span> Programs
-                </NavLink>
-            </div>
-
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="products">
-                    <span class="bi bi-box-seam" aria-hidden="true"></span> Products
-                </NavLink>
-            </div>
-
-        
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="licenses">
-                    <span class="bi bi-key-fill" aria-hidden="true"></span> Licenses
-                </NavLink>
-            </div>
-
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="license-members">
-                    <span class="bi bi-person-badge-fill" aria-hidden="true"></span> License Members
-                </NavLink>
-            </div>
+            @if (systemExpanded)
+            {
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="/system/import">
+                        <span class="bi bi-upload" aria-hidden="true"></span> Import
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="/system/export">
+                        <span class="bi bi-download" aria-hidden="true"></span> Export
+                    </NavLink>
+                </div>
+            }
         }
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="weather">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
-            </NavLink>
-        </div>
     </nav>
 </div>
 
 @code {
     @inject AuthenticationService AuthService
+
+    private bool customerExpanded = true;
+    private bool licenseExpanded = true;
+    private bool systemExpanded = false;
 }

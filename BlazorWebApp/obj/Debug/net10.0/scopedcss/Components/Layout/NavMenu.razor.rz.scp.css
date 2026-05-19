@@ -53,7 +53,29 @@
     letter-spacing: .08em;
     text-transform: uppercase;
     color: rgba(255,255,255,.45);
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: color 0.2s ease;
 }
+
+.nav-section-label:hover[b-zpxme7j96v] {
+    color: rgba(255,255,255,.65);
+}
+
+.chevron[b-zpxme7j96v] {
+    display: inline-block;
+    transition: transform 0.2s ease;
+    font-size: 1.1rem;
+    line-height: 1;
+}
+
+.chevron.expanded[b-zpxme7j96v] {
+    transform: rotate(90deg);
+}
+
 
 .nav-item[b-zpxme7j96v] {
     font-size: 0.9rem;

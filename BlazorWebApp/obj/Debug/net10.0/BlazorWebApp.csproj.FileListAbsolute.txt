@@ -315,7 +315,6 @@
 /home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/obj/Debug/net10.0/scopedcss/Components/Pages/Login.razor.rz.scp.css
 /home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/obj/Debug/net10.0/scopedcss/bundle/BlazorWebApp.styles.css
 /home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/obj/Debug/net10.0/scopedcss/projectbundle/BlazorWebApp.bundle.scp.css
-/home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/obj/Debug/net10.0/compressed/tx17nl5k4c-{0}-w7mf952350-w7mf952350.gz
 /home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/obj/Debug/net10.0/compressed/c6jzbtwh7c-{0}-bqjiyaj88i-bqjiyaj88i.gz
 /home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/obj/Debug/net10.0/compressed/prk62t6dpu-{0}-c2jlpeoesf-c2jlpeoesf.gz
 /home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/obj/Debug/net10.0/compressed/hvvu339i51-{0}-erw9l3u2r3-erw9l3u2r3.gz
@@ -363,8 +362,6 @@
 /home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/obj/Debug/net10.0/compressed/a6smwdhipf-{0}-cyz5k529gx-cyz5k529gx.gz
 /home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/obj/Debug/net10.0/compressed/ya8w7lupvm-{0}-hwaxidwiwj-hwaxidwiwj.gz
 /home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/obj/Debug/net10.0/compressed/cknulmdj90-{0}-xbbil6v7co-xbbil6v7co.gz
-/home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/obj/Debug/net10.0/compressed/jqlgg8nyzc-{0}-b6qqr8w43b-b6qqr8w43b.gz
-/home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/obj/Debug/net10.0/compressed/vc1qtgcbnt-{0}-b6qqr8w43b-b6qqr8w43b.gz
 /home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/obj/Debug/net10.0/staticwebassets.build.json
 /home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/obj/Debug/net10.0/staticwebassets.build.json.cache
 /home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/obj/Debug/net10.0/staticwebassets.development.json
@@ -376,3 +373,6 @@
 /home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/obj/Debug/net10.0/BlazorWebApp.pdb
 /home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/obj/Debug/net10.0/BlazorWebApp.genruntimeconfig.cache
 /home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/obj/Debug/net10.0/ref/BlazorWebApp.dll
+/home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/obj/Debug/net10.0/compressed/tx17nl5k4c-{0}-zkv6u76qa0-zkv6u76qa0.gz
+/home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/obj/Debug/net10.0/compressed/jqlgg8nyzc-{0}-hfjpmptt1p-hfjpmptt1p.gz
+/home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/obj/Debug/net10.0/compressed/vc1qtgcbnt-{0}-hfjpmptt1p-hfjpmptt1p.gz
