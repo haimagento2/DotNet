@@ -2,8 +2,13 @@
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Components.Forms
 @using System.IO
+@using BlazorWebApp.Data
+@using System.Security.Claims
+@using BlazorWebApp.Models
 @inject AuthenticationService AuthService
 @inject NavigationManager Navigation
+@inject ApplicationDbContext DbContext
+@inject AuthenticationStateProvider AuthStateProvider
 
 <PageTitle>Import CSV</PageTitle>
 
@@ -15,11 +20,21 @@ else
 {
     <div class="page-container">
         <div class="page-header">
-            <h1>Import CSV</h1>
+            <h1>Import CSV Data</h1>
         </div>
 
-        <div class="card p-4 bg-white rounded shadow-sm">
+        <div class="card p-4 bg-white rounded shadow-sm mx-auto" style="max-width:900px;">
+            @if (!string.IsNullOrEmpty(statusMessage))
+            {
+                <div class="alert alert-info">@statusMessage</div>
+            }
+
             <p>Upload a CSV file and click Import to process the data.</p>
+
+            <div class="mb-3 small text-muted">
+                <div>Selected import type: <strong>@(string.IsNullOrEmpty(selectedImportType) ? "—" : selectedImportType)</strong></div>
+                <div>Selected file: <strong>@(selectedFile?.Name ?? "—")</strong></div>
+            </div>
 
             <div class="form-group">
                 <label for="importType">Import Type</label>
@@ -35,13 +50,18 @@ else
             </div>
 
             <div class="form-group mt-3">
-                <button class="btn btn-primary" @onclick="ImportCsvFile" disabled="@(!CanImport)">Import CSV</button>
+                <button class="btn btn-primary" @onclick="ImportCsvFile" disabled="@(isImporting || !CanImport)">
+                    @if (isImporting)
+                    {
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        <span>&nbsp;Importing...</span>
+                    }
+                    else
+                    {
+                        <span>Import CSV</span>
+                    }
+                </button>
             </div>
-
-            @if (!string.IsNullOrEmpty(statusMessage))
-            {
-                <div class="alert alert-info mt-3">@statusMessage</div>
-            }
         </div>
     </div>
 }
@@ -50,13 +70,22 @@ else
     private string selectedImportType = string.Empty;
     private IBrowserFile? selectedFile;
     private string? statusMessage;
+    private bool isImporting = false;
 
-    private bool CanImport => selectedFile != null && !string.IsNullOrWhiteSpace(selectedImportType);
+    private bool CanImport => selectedFile != null && !string.IsNullOrWhiteSpace(selectedImportType) && !isImporting;
+    private bool isAdmin = false;
 
     private void OnFileSelected(InputFileChangeEventArgs e)
     {
         selectedFile = e.File;
         statusMessage = null;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        isAdmin = user?.HasClaim(c => c.Type == "admin" && c.Value == "true") == true;
     }
 
     private async Task ImportCsvFile()
@@ -69,14 +98,277 @@ else
 
         try
         {
+            isImporting = true;
+            StateHasChanged();
+
             using var stream = selectedFile.OpenReadStream(maxAllowedSize: 20 * 1024 * 1024);
             using var reader = new StreamReader(stream);
             var contents = await reader.ReadToEndAsync();
-            statusMessage = $"File '{selectedFile.Name}' for {selectedImportType} loaded successfully ({selectedFile.Size} bytes).";
+            // Basic import handling for Customers (CSV headers expected similar to seed files)
+            if (selectedImportType == "Customer")
+            {
+                var rows = ReadCsvRowsFromString(contents).ToList();
+                var created = new List<BlazorWebApp.Models.Customer>();
+                var duplicateEmails = new List<string>();
+
+                // Get existing customer emails from database
+                var existingEmails = new HashSet<string>(DbContext.Customers.Select(c => c.Email), StringComparer.OrdinalIgnoreCase);
+
+                foreach (var row in rows)
+                {
+                    var email = row.GetValueOrDefault("Email")?.Trim() ?? string.Empty;
+
+                    // Validate email is not empty
+                    if (string.IsNullOrEmpty(email))
+                    {
+                        duplicateEmails.Add($"Row with missing email skipped");
+                        continue;
+                    }
+
+                    // Check if email already exists in database or in current batch
+                    if (existingEmails.Contains(email))
+                    {
+                        duplicateEmails.Add(email);
+                        continue;
+                    }
+
+                    var customer = new BlazorWebApp.Models.Customer
+                    {
+                        Id = TryParseInt(row.GetValueOrDefault("Id"), 0),
+                        FirstName = row.GetValueOrDefault("FirstName")?.Trim() ?? string.Empty,
+                        LastName = row.GetValueOrDefault("LastName")?.Trim() ?? string.Empty,
+                        Email = email,
+                        Phone = row.GetValueOrDefault("Phone")?.Trim(),
+                        City = row.GetValueOrDefault("City")?.Trim(),
+                        CompanyId = TryParseNullableInt(row.GetValueOrDefault("CompanyId")),
+                        CustomerGroupId = TryParseNullableInt(row.GetValueOrDefault("CustomerGroupId")),
+                        CreatedAt = TryParseDateTime(row.GetValueOrDefault("CreatedAt")) ?? DateTime.Now,
+                        UpdatedAt = TryParseNullableDateTime(row.GetValueOrDefault("UpdatedAt"))
+                    };
+
+                    created.Add(customer);
+                    existingEmails.Add(email); // Add to set to prevent duplicates in current batch
+                }
+
+                if (created.Any())
+                {
+                    DbContext.Customers.AddRange(created);
+                    DbContext.SaveChanges();
+                }
+
+                // Build status message with details about imported and skipped records
+                var message = $"Imported {created.Count} customer(s) from '{selectedFile.Name}'.";
+                if (duplicateEmails.Any())
+                {
+                    message += $" {duplicateEmails.Count} record(s) skipped due to duplicate or empty email: {string.Join(", ", duplicateEmails.Take(5))}";
+                    if (duplicateEmails.Count > 5)
+                    {
+                        message += $" and {duplicateEmails.Count - 5} more.";
+                    }
+                }
+                statusMessage = message;
+            }
+            else if (selectedImportType == "License")
+            {
+                var rows = ReadCsvRowsFromString(contents).ToList();
+                var created = new List<BlazorWebApp.Models.License>();
+
+                foreach (var row in rows)
+                {
+                    var license = new BlazorWebApp.Models.License
+                    {
+                        Id = TryParseInt(row.GetValueOrDefault("Id"), 0),
+                        LicenseKey = row.GetValueOrDefault("LicenseKey")?.Trim() ?? string.Empty,
+                        ProgramId = TryParseInt(row.GetValueOrDefault("ProgramId"), 0),
+                        CompanyId = TryParseNullableInt(row.GetValueOrDefault("CompanyId")),
+                        CustomerGroupId = TryParseNullableInt(row.GetValueOrDefault("CustomerGroupId")),
+                        OwnerId = TryParseNullableInt(row.GetValueOrDefault("OwnerId")),
+                        SubLicenseType = TryParseLicenseType(row.GetValueOrDefault("SubLicenseType")),
+                        StartDate = TryParseDateTime(row.GetValueOrDefault("StartDate")) ?? DateTime.Now,
+                        ExpiryDate = TryParseDateTime(row.GetValueOrDefault("ExpiryDate")) ?? DateTime.Now,
+                        MaxMembers = TryParseInt(row.GetValueOrDefault("MaxMembers"), 0),
+                        Status = row.GetValueOrDefault("Status")?.Trim() ?? "Active",
+                        CreatedAt = TryParseDateTime(row.GetValueOrDefault("CreatedAt")) ?? DateTime.Now,
+                        UpdatedAt = TryParseNullableDateTime(row.GetValueOrDefault("UpdatedAt"))
+                    };
+
+                    created.Add(license);
+                }
+
+                if (created.Any())
+                {
+                    // Skip duplicates by LicenseKey if they already exist
+                    var existingKeys = new HashSet<string>(DbContext.Licenses.Select(l => l.LicenseKey));
+                    var toInsert = created.Where(c => !existingKeys.Contains(c.LicenseKey)).ToList();
+                    if (toInsert.Any())
+                    {
+                        DbContext.Licenses.AddRange(toInsert);
+                        DbContext.SaveChanges();
+
+                        // Ensure owner members exist
+                        var licensesWithOwner = DbContext.Licenses
+                            .Where(l => l.OwnerId.HasValue)
+                            .Select(l => new { l.Id, OwnerId = l.OwnerId.Value, l.StartDate, l.CreatedAt })
+                            .ToList();
+
+                        foreach (var lic in licensesWithOwner)
+                        {
+                            var ownerMember = DbContext.LicenseMembers
+                                .FirstOrDefault(m => m.LicenseId == lic.Id && m.CustomerId == lic.OwnerId);
+                            if (ownerMember is null)
+                            {
+                                DbContext.LicenseMembers.Add(new BlazorWebApp.Models.LicenseMember
+                                {
+                                    LicenseId = lic.Id,
+                                    CustomerId = lic.OwnerId,
+                                    OwnerId = lic.OwnerId,
+                                    Permission = 1,
+                                    AssignedAt = lic.StartDate,
+                                    CreatedAt = lic.CreatedAt,
+                                    UpdatedAt = null
+                                });
+                            }
+                            else
+                            {
+                                if (ownerMember.Permission != 1) ownerMember.Permission = 1;
+                                if (ownerMember.OwnerId != lic.OwnerId) ownerMember.OwnerId = lic.OwnerId;
+                                DbContext.LicenseMembers.Update(ownerMember);
+                            }
+                        }
+
+                        DbContext.SaveChanges();
+                    }
+                }
+
+                statusMessage = $"Imported {created.Count} license(s) from '{selectedFile.Name}'.";
+            }
+            else
+            {
+                statusMessage = $"File '{selectedFile.Name}' for {selectedImportType} loaded successfully ({selectedFile.Size} bytes).";
+            }
         }
         catch (Exception ex)
         {
             statusMessage = $"Import failed: {ex.Message}";
         }
+        finally
+        {
+            isImporting = false;
+            StateHasChanged();
+        }
+    }
+
+    private static IEnumerable<Dictionary<string, string>> ReadCsvRowsFromString(string contents)
+    {
+        using var reader = new StringReader(contents);
+        var headerLine = reader.ReadLine();
+        if (headerLine is null) yield break;
+
+        var headers = ParseCsvLine(headerLine);
+        while (true)
+        {
+            var line = reader.ReadLine();
+            if (line is null) break;
+            if (string.IsNullOrWhiteSpace(line)) continue;
+
+            var values = ParseCsvLine(line);
+            var row = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            for (var i = 0; i < headers.Length; i++)
+            {
+                var header = headers[i].Trim();
+                if (string.IsNullOrEmpty(header)) continue;
+                row[header] = i < values.Length ? values[i] : string.Empty;
+            }
+
+            yield return row;
+        }
+    }
+
+    private static string[] ParseCsvLine(string line)
+    {
+        var values = new List<string>();
+        var current = new System.Text.StringBuilder();
+        var inQuotes = false;
+
+        for (var i = 0; i < line.Length; i++)
+        {
+            var c = line[i];
+
+            if (inQuotes)
+            {
+                if (c == '"')
+                {
+                    if (i + 1 < line.Length && line[i + 1] == '"')
+                    {
+                        current.Append('"');
+                        i++;
+                    }
+                    else
+                    {
+                        inQuotes = false;
+                    }
+                }
+                else
+                {
+                    current.Append(c);
+                }
+            }
+            else
+            {
+                if (c == '"')
+                {
+                    inQuotes = true;
+                }
+                else if (c == ',')
+                {
+                    values.Add(current.ToString());
+                    current.Clear();
+                }
+                else
+                {
+                    current.Append(c);
+                }
+            }
+        }
+
+        values.Add(current.ToString());
+        return values.ToArray();
+    }
+
+    private static int TryParseInt(string? s, int fallback)
+    {
+        if (int.TryParse(s, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var v)) return v;
+        return fallback;
+    }
+
+    private static int? TryParseNullableInt(string? s)
+    {
+        s = s?.Trim();
+        if (string.IsNullOrEmpty(s)) return null;
+        return TryParseInt(s, 0);
+    }
+
+    private static DateTime? TryParseDateTime(string? s)
+    {
+        if (DateTime.TryParse(s, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeLocal, out var d)) return d;
+        return null;
+    }
+
+    private static DateTime? TryParseNullableDateTime(string? s) => TryParseDateTime(s);
+
+    private static LicenseType TryParseLicenseType(string? value)
+    {
+        value = value?.Trim() ?? string.Empty;
+        if (int.TryParse(value, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var intValue))
+        {
+            return (LicenseType)intValue;
+        }
+
+        if (Enum.TryParse<LicenseType>(value, ignoreCase: true, out var licenseType))
+        {
+            return licenseType;
+        }
+
+        return LicenseType.TeamSize;
     }
 }
