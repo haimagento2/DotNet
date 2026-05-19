@@ -15,12 +15,12 @@
     </div>
 </div>
 
-<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+<input type="checkbox" id="navbarToggler" title="Navigation menu" class="navbar-toggler" />
 
-<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+<div class="nav-scrollable">
     <nav class="nav flex-column">
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All" @onclick="CloseNavbar">
                 <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
             </NavLink>
         </div>
@@ -28,80 +28,80 @@
         @if (AuthService.IsAuthenticated())
         {
             <div class="nav-item px-3">
-                <NavLink class="nav-link" href="dashboard">
+                <NavLink class="nav-link" href="dashboard" @onclick="CloseNavbar">
                     <span class="bi bi-speedometer2" aria-hidden="true"></span> Dashboard
                 </NavLink>
             </div>
 
             <div class="nav-item px-3">
-                <NavLink class="nav-link" href="admins">
+                <NavLink class="nav-link" href="admins" @onclick="CloseNavbar">
                     <span class="bi bi-shield-lock-fill" aria-hidden="true"></span> Admins
                 </NavLink>
             </div>
 
-            <div class="nav-section-label" @onclick="() => customerExpanded = !customerExpanded">
+            <div class="nav-section-label" @onclick:stopPropagation @onclick="() => customerExpanded = !customerExpanded">
                 <span class="chevron @(customerExpanded ? "expanded" : "")">›</span> Customer
             </div>
 
             @if (customerExpanded)
             {
                 <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="customers">
+                    <NavLink class="nav-link" href="customers" @onclick="CloseNavbar">
                         <span class="bi bi-people-fill" aria-hidden="true"></span> Customers
                     </NavLink>
                 </div>
 
                 <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="customer-groups">
+                    <NavLink class="nav-link" href="customer-groups" @onclick="CloseNavbar">
                         <span class="bi bi-collection-fill" aria-hidden="true"></span> Customer Groups
                     </NavLink>
                 </div>
 
                 <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="companies">
+                    <NavLink class="nav-link" href="companies" @onclick="CloseNavbar">
                         <span class="bi bi-building" aria-hidden="true"></span> Companies
                     </NavLink>
                 </div>
             }
 
-            <div class="nav-section-label" @onclick="() => licenseExpanded = !licenseExpanded">
+            <div class="nav-section-label" @onclick:stopPropagation @onclick="() => licenseExpanded = !licenseExpanded">
                 <span class="chevron @(licenseExpanded ? "expanded" : "")">›</span> License Management
             </div>
 
             @if (licenseExpanded)
             {
                 <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="programs">
+                    <NavLink class="nav-link" href="programs" @onclick="CloseNavbar">
                         <span class="bi bi-grid-fill" aria-hidden="true"></span> Programs
                     </NavLink>
                 </div>
             
                 <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="licenses">
+                    <NavLink class="nav-link" href="licenses" @onclick="CloseNavbar">
                         <span class="bi bi-key-fill" aria-hidden="true"></span> Licenses
                     </NavLink>
                 </div>
 
                 <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="license-members">
+                    <NavLink class="nav-link" href="license-members" @onclick="CloseNavbar">
                         <span class="bi bi-person-badge-fill" aria-hidden="true"></span> License Members
                     </NavLink>
                 </div>
             }
 
-            <div class="nav-section-label" @onclick="() => systemExpanded = !systemExpanded">
+            <div class="nav-section-label" @onclick:stopPropagation @onclick="() => systemExpanded = !systemExpanded">
                 <span class="chevron @(systemExpanded ? "expanded" : "")">›</span> System
             </div>
 
             @if (systemExpanded)
             {
                 <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="/system/import">
+                    <NavLink class="nav-link" href="/system/import" @onclick="CloseNavbar">
                         <span class="bi bi-upload" aria-hidden="true"></span> Import
                     </NavLink>
                 </div>
                 <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="/system/export">
+                    <NavLink class="nav-link" href="/system/export" @onclick="CloseNavbar">
                         <span class="bi bi-download" aria-hidden="true"></span> Export
                     </NavLink>
                 </div>
@@ -117,4 +117,13 @@
     private bool customerExpanded = true;
     private bool licenseExpanded = true;
     private bool systemExpanded = false;
+
+    private void CloseNavbar()
+    {
+        // This will be called when a nav link is clicked
+        // The browser will handle the navigation after this event
+    }
 }
+
+
+

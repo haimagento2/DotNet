@@ -376,3 +376,4 @@
 /home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/obj/Debug/net10.0/compressed/tx17nl5k4c-{0}-zkv6u76qa0-zkv6u76qa0.gz
 /home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/obj/Debug/net10.0/compressed/jqlgg8nyzc-{0}-hfjpmptt1p-hfjpmptt1p.gz
 /home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/obj/Debug/net10.0/compressed/vc1qtgcbnt-{0}-hfjpmptt1p-hfjpmptt1p.gz
+/home/hainv4@smartosc.com/Documents/DotNet/BlazorWebApp/obj/Debug/net10.0/compressed/6tw0nwiqy8-{0}-jnewo1wl11-jnewo1wl11.gz
