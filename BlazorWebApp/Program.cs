@@ -124,6 +124,8 @@ static void EnsureProductsTables(ApplicationDbContext dbContext)
             custom_period INTEGER,
             linking_license INTEGER,
             community_only INTEGER,
+            auto_renew_license INTEGER NOT NULL DEFAULT 0,
+            send_email_instruction INTEGER NOT NULL DEFAULT 0,
             PRIMARY KEY (ProgramId, ProductId),
             FOREIGN KEY (ProgramId) REFERENCES Programs (Id) ON DELETE CASCADE,
             FOREIGN KEY (ProductId) REFERENCES Products (product_id) ON DELETE CASCADE
@@ -165,6 +167,14 @@ static void EnsureProductsTables(ApplicationDbContext dbContext)
     if (TableExists(dbContext, "ProgramProductAssociated") && !ColumnExists(dbContext, "ProgramProductAssociated", "custom_period"))
     {
         dbContext.Database.ExecuteSqlRaw("ALTER TABLE ProgramProductAssociated ADD COLUMN custom_period INTEGER;");
+    }
+    if (TableExists(dbContext, "ProgramProductAssociated") && !ColumnExists(dbContext, "ProgramProductAssociated", "auto_renew_license"))
+    {
+        dbContext.Database.ExecuteSqlRaw("ALTER TABLE ProgramProductAssociated ADD COLUMN auto_renew_license INTEGER NOT NULL DEFAULT 0;");
+    }
+    if (TableExists(dbContext, "ProgramProductAssociated") && !ColumnExists(dbContext, "ProgramProductAssociated", "send_email_instruction"))
+    {
+        dbContext.Database.ExecuteSqlRaw("ALTER TABLE ProgramProductAssociated ADD COLUMN send_email_instruction INTEGER NOT NULL DEFAULT 0;");
     }
 }
 

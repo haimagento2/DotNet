@@ -59,10 +59,28 @@
     align-items: center;
     gap: 0.5rem;
     transition: color 0.2s ease;
+    font-family: inherit;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
 }
 
 .nav-section-label:hover {
     color: rgba(255,255,255,.65);
+}
+
+.nav-section-label:focus {
+    outline: none;
+}
+
+.nav-section-content {
+    display: block;
+    transition: all 0.3s ease;
+}
+
+.nav-section-content[style*="display: none"] {
+    display: none !important;
 }
 
 .chevron {

@@ -39,12 +39,11 @@
                 </NavLink>
             </div>
 
-            <div class="nav-section-label" @onclick:stopPropagation @onclick="() => customerExpanded = !customerExpanded">
-                <span class="chevron @(customerExpanded ? "expanded" : "")">›</span> Customer
-            </div>
+            <button class="nav-section-label" id="toggle-customer" type="button" @onclick="ToggleCustomerSection">
+                <span class="chevron @(isCustomerExpanded ? "expanded" : "")">›</span> Customer
+            </button>
 
-            @if (customerExpanded)
-            {
+            <div id="customer-section" class="nav-section-content" style="display:@(isCustomerExpanded ? "block" : "none")">
                 <div class="nav-item px-3">
                     <NavLink class="nav-link" href="customers" @onclick="CloseNavbar">
                         <span class="bi bi-people-fill" aria-hidden="true"></span> Customers
@@ -62,14 +61,13 @@
                         <span class="bi bi-building" aria-hidden="true"></span> Companies
                     </NavLink>
                 </div>
-            }
-
-            <div class="nav-section-label" @onclick:stopPropagation @onclick="() => licenseExpanded = !licenseExpanded">
-                <span class="chevron @(licenseExpanded ? "expanded" : "")">›</span> License Management
             </div>
 
-            @if (licenseExpanded)
-            {
+            <button class="nav-section-label" id="toggle-license" type="button" @onclick="ToggleLicenseSection">
+                <span class="chevron @(isLicenseExpanded ? "expanded" : "")">›</span> License Management
+            </button>
+
+            <div id="license-section" class="nav-section-content" style="display:@(isLicenseExpanded ? "block" : "none")">
                 <div class="nav-item px-3">
                     <NavLink class="nav-link" href="programs" @onclick="CloseNavbar">
                         <span class="bi bi-grid-fill" aria-hidden="true"></span> Programs
@@ -87,14 +85,13 @@
                         <span class="bi bi-person-badge-fill" aria-hidden="true"></span> License Members
                     </NavLink>
                 </div>
-            }
-
-            <div class="nav-section-label" @onclick:stopPropagation @onclick="() => systemExpanded = !systemExpanded">
-                <span class="chevron @(systemExpanded ? "expanded" : "")">›</span> System
             </div>
 
-            @if (systemExpanded)
-            {
+            <button class="nav-section-label" id="toggle-system" type="button" @onclick="ToggleSystemSection">
+                <span class="chevron @(isSystemExpanded ? "expanded" : "")">›</span> System
+            </button>
+
+            <div id="system-section" class="nav-section-content" style="display:@(isSystemExpanded ? "block" : "none")">
                 <div class="nav-item px-3">
                     <NavLink class="nav-link" href="/system/import" @onclick="CloseNavbar">
                         <span class="bi bi-upload" aria-hidden="true"></span> Import
@@ -105,7 +102,7 @@
                         <span class="bi bi-download" aria-hidden="true"></span> Export
                     </NavLink>
                 </div>
-            }
+            </div>
         }
 
     </nav>
@@ -114,9 +111,24 @@
 @code {
     @inject AuthenticationService AuthService
 
-    private bool customerExpanded = true;
-    private bool licenseExpanded = true;
-    private bool systemExpanded = false;
+    private bool isCustomerExpanded = true;
+    private bool isLicenseExpanded = true;
+    private bool isSystemExpanded = false;
+
+    private void ToggleCustomerSection()
+    {
+        isCustomerExpanded = !isCustomerExpanded;
+    }
+
+    private void ToggleLicenseSection()
+    {
+        isLicenseExpanded = !isLicenseExpanded;
+    }
+
+    private void ToggleSystemSection()
+    {
+        isSystemExpanded = !isSystemExpanded;
+    }
 
     private void CloseNavbar()
     {

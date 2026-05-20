@@ -137,6 +137,8 @@ namespace BlazorWebApp.Data
                 entity.Property(e => e.CustomPeriodDays).HasColumnName("custom_period");
                 entity.Property(e => e.LinkingLicense).HasColumnName("linking_license");
                 entity.Property(e => e.CommunityOnly).HasColumnName("community_only");
+                entity.Property(e => e.AutoRenewLicense).HasColumnName("auto_renew_license");
+                entity.Property(e => e.SendEmailInstruction).HasColumnName("send_email_instruction");
 
                 entity.HasOne(e => e.Program)
                     .WithMany(p => p.ProgramProductAssociations)

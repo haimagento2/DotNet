@@ -13,5 +13,7 @@ namespace BlazorWebApp.Models
         public int? CustomPeriodDays { get; set; }
         public bool? LinkingLicense { get; set; }
         public bool? CommunityOnly { get; set; }
+        public bool AutoRenewLicense { get; set; }
+        public bool SendEmailInstruction { get; set; }
     }
 }

@@ -1,5 +1,4 @@
 @page "/programs/edit/{id:int}"
-@rendermode InteractiveServer
 @using BlazorWebApp.Data
 @using BlazorWebApp.Models
 @using Microsoft.AspNetCore.Components.Forms
@@ -197,9 +196,9 @@ else
                                                         <td>@(association?.Type ?? "-")</td>
                                                         <td>@(association?.Period ?? "-")</td>
                                                         <td>@(association?.LinkingLicense == true ? "Yes" : association?.LinkingLicense == false ? "No" : "-")</td>
-                                                        <td>No</td>
+                                                        <td>@(association?.AutoRenewLicense == true ? "Yes" : association?.AutoRenewLicense == false ? "No" : "-")</td>
                                                         <td>@(association?.CommunityOnly == true ? "Yes" : association?.CommunityOnly == false ? "No" : "-")</td>
-                                                        <td>@(product.SendEmailInstruction ? "Yes" : "No")</td>
+                                                        <td>@(association?.SendEmailInstruction == true ? "Yes" : association?.SendEmailInstruction == false ? "No" : "-")</td>
                                                         <td>
                                                             <div class="action-dropdown" @onclick:stopPropagation="true">
                                                                 <button type="button" class="btn-action-menu" @onclick="() => ToggleDropdown(product.Id)">Edit ▼</button>
@@ -467,7 +466,9 @@ else
                     {
                         ProgramId = program.Id,
                         ProductId = productId,
-                        Period = "Yearly"
+                        Period = "Yearly",
+                        AutoRenewLicense = false,
+                        SendEmailInstruction = false
                     });
                 }
             }
@@ -479,8 +480,14 @@ else
             await Task.Delay(1000);
             Navigation.NavigateTo("/programs");
         }
-        catch (Exception ex) { formError = $"Error: {ex.Message}"; }
-        finally { isSaving = false; }
+        catch (Exception ex)
+        {
+            formError = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
     }
 
     private async Task LoadProducts()
@@ -617,8 +624,9 @@ else
             LicensePeriod = association?.Period ?? product.Period ?? string.Empty,
             CustomPeriodDays = association?.CustomPeriodDays ?? 0,
             EnableSubscriptionLinking = association?.LinkingLicense ?? product.EnableSubscriptionLinking,
+            AutoRenewLicense = association?.AutoRenewLicense ?? false,
             CommunityOnly = association?.CommunityOnly ?? product.CommunityOnly,
-            SendEmailInstruction = product.SendEmailInstruction
+            SendEmailInstruction = association?.SendEmailInstruction ?? product.SendEmailInstruction
         };
 
         showEditProductModal = true;
@@ -641,7 +649,9 @@ else
             association.Period = editProductForm.LicensePeriod;
             association.CustomPeriodDays = editProductForm.CustomPeriodDays;
             association.LinkingLicense = editProductForm.EnableSubscriptionLinking;
+            association.AutoRenewLicense = editProductForm.AutoRenewLicense;
             association.CommunityOnly = editProductForm.CommunityOnly;
+            association.SendEmailInstruction = editProductForm.SendEmailInstruction;
 
             DbContext.Entry(association).State = EntityState.Modified;
         }
@@ -655,7 +665,9 @@ else
                 Period = editProductForm.LicensePeriod,
                 CustomPeriodDays = editProductForm.CustomPeriodDays,
                 LinkingLicense = editProductForm.EnableSubscriptionLinking,
-                CommunityOnly = editProductForm.CommunityOnly
+                AutoRenewLicense = editProductForm.AutoRenewLicense,
+                CommunityOnly = editProductForm.CommunityOnly,
+                SendEmailInstruction = editProductForm.SendEmailInstruction
             };
 
             DbContext.ProgramProductAssociations.Add(association);
